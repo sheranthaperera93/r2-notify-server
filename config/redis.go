@@ -29,5 +29,5 @@ func InitRedis() {
 		panic(err)
 	}
 
-	log.Println("Connected to Redis")
+	log.Printf("Connected to Redis")
 }

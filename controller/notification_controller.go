@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"r2-notify/data"
+	"r2-notify/logger"
 	"r2-notify/models"
 	clientStore "r2-notify/services"
 	notificationService "r2-notify/services/notification"
@@ -31,14 +33,44 @@ func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 
 	userId := ctx.GetHeader("X-User-ID")
 	appId := ctx.GetHeader("X-App-ID")
+	correlationId, _ := ctx.Get(data.CORRELATION_ID)
+
+	logger.Log.Info(logger.LogPayload{
+		Service:       "r2-notify",
+		Component:     "NotificationController",
+		Operation:     "CreateNotification",
+		Message:       "CreateNotification called",
+		UserId:        userId,
+		AppId:         appId,
+		CorrelationId: correlationId.(string),
+	})
 
 	if userId == "" || appId == "" {
+		logger.Log.Error(logger.LogPayload{
+			Service:       "r2-notify",
+			Component:     "NotificationController",
+			Operation:     "CreateNotification",
+			Message:       "Missing X-User-ID or X-App-ID header",
+			UserId:        userId,
+			AppId:         appId,
+			CorrelationId: correlationId.(string),
+		})
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "X-User-ID and X-App-ID headers are required"})
 		return
 	}
 
 	var payload data.CreateNotificationRequest
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:       "r2-notify",
+			Component:     "NotificationController",
+			Operation:     "CreateNotification",
+			Message:       "Invalid request payload",
+			UserId:        userId,
+			AppId:         appId,
+			CorrelationId: correlationId.(string),
+			Error:         err,
+		})
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -63,9 +95,39 @@ func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 	m.Id = recordId
 
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:       "r2-notify",
+			Component:     "NotificationController",
+			Operation:     "CreateNotification",
+			Message:       "Failed to create notification",
+			UserId:        userId,
+			AppId:         appId,
+			CorrelationId: correlationId.(string),
+			Error:         err,
+		})
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	logger.Log.Debug(logger.LogPayload{
+		Service:       "r2-notify",
+		Component:     "NotificationController",
+		Operation:     "CreateNotification",
+		Message:       fmt.Sprintf("Notification created with payload %v", m),
+		UserId:        userId,
+		AppId:         appId,
+		CorrelationId: correlationId.(string),
+	})
+
+	logger.Log.Info(logger.LogPayload{
+		Service:       "r2-notify",
+		Component:     "NotificationController",
+		Operation:     "CreateNotification",
+		Message:       "Sending notification to user",
+		UserId:        userId,
+		AppId:         appId,
+		CorrelationId: correlationId.(string),
+	})
 
 	clientStore.SendNotificationToUser(data.ActionNotification{
 		Action: data.Action{Action: "newNotification"},

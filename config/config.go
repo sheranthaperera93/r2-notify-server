@@ -21,6 +21,11 @@ type Config struct {
 	EventHubNameSpaceConString    string
 	EventHubNotificationEventName string
 	AllowedOrigins                string
+	LogLevel                      string
+	LogMethod                     string
+	LogFilePath                   string
+	MaxLogFileSize                int
+	AppInsightsInstrumentationKey string
 }
 
 func LoadConfig() *Config {
@@ -40,6 +45,11 @@ func LoadConfig() *Config {
 		EventHubNameSpaceConString:    GetEnv("EVENT_HUB_NAMESPACE_CON_STRING", ""),
 		EventHubNotificationEventName: GetEnv("EVENT_HUB_NOTIFICATION_EVENT_NAME", ""),
 		AllowedOrigins:                GetEnv("ALLOWED_ORIGINS", "*"),
+		LogLevel:                      GetEnv("LOG_LEVEL", ""),
+		LogMethod:                     GetEnv("LOG_METHOD", "file"),
+		LogFilePath:                   GetEnv("LOG_FILE_PATH", "./logs/app.log"),
+		MaxLogFileSize:                GetEnvInt("MAX_LOG_FILE_SIZE", 10485760),
+		AppInsightsInstrumentationKey: GetEnv("APP_INSIGHTS_INSTRUMENTATION_KEY", ""),
 	}
 }
 

@@ -3,6 +3,7 @@ package notificationRepository
 import (
 	"context"
 	"errors"
+	"log"
 	"r2-notify/models"
 	"strings"
 	"time"
@@ -85,10 +86,10 @@ func (t *NotificationRepositoryImpl) Create(notification models.Notification) (p
 func (t *NotificationRepositoryImpl) MarkAsRead(clientId string) error {
 	updatedResults, err := t.Db.Collection("notifications").UpdateMany(context.Background(), bson.M{"userId": clientId}, bson.M{"$set": bson.M{"readStatus": true, "updatedAt": primitive.NewDateTimeFromTime(time.Now())}})
 	if err != nil {
-		println("Error", err.Error())
+		log.Printf("Error %v", err.Error())
 		return err
 	}
-	println("Matched: ", updatedResults.MatchedCount, " | Modified: ", updatedResults.ModifiedCount)
+	log.Printf("Matched: %d | Modified: %d", updatedResults.MatchedCount, updatedResults.ModifiedCount)
 	return nil
 }
 
@@ -98,10 +99,10 @@ func (t *NotificationRepositoryImpl) MarkAppAsRead(clientId string, appId string
 	appId = strings.Trim(appId, `"'`)
 	updatedResults, err := t.Db.Collection("notifications").UpdateMany(context.Background(), bson.M{"userId": clientId, "appId": appId}, bson.M{"$set": bson.M{"readStatus": true, "updatedAt": primitive.NewDateTimeFromTime(time.Now())}})
 	if err != nil {
-		println("Error", err.Error())
+		log.Printf("Error %v", err.Error())
 		return err
 	}
-	println("Matched: ", updatedResults.MatchedCount, " | Modified: ", updatedResults.ModifiedCount)
+	log.Printf("Matched: %d | Modified: %d", updatedResults.MatchedCount, updatedResults.ModifiedCount)
 	return nil
 }
 
@@ -115,10 +116,10 @@ func (t *NotificationRepositoryImpl) MarkGroupAsRead(clientId string, appId stri
 	groupKey = strings.Trim(groupKey, `"'`)
 	updatedResults, err := t.Db.Collection("notifications").UpdateMany(context.Background(), bson.M{"userId": clientId, "appId": appId, "groupKey": groupKey}, bson.M{"$set": bson.M{"readStatus": true, "updatedAt": primitive.NewDateTimeFromTime(time.Now())}})
 	if err != nil {
-		println("Error", err.Error())
+		log.Printf("Error %v", err.Error())
 		return err
 	}
-	println("Matched: ", updatedResults.MatchedCount, " | Modified: ", updatedResults.ModifiedCount)
+	log.Printf("Matched: %d | Modified: %d", updatedResults.MatchedCount, updatedResults.ModifiedCount)
 	return nil
 }
 
@@ -135,10 +136,10 @@ func (t *NotificationRepositoryImpl) MarkNotificationAsRead(clientId string, not
 	}
 	updatedResults, err := t.Db.Collection("notifications").UpdateByID(context.Background(), objID, bson.M{"$set": bson.M{"readStatus": true, "updatedAt": primitive.NewDateTimeFromTime(time.Now())}})
 	if err != nil {
-		println("Error", err.Error())
+		log.Printf("Error %v", err.Error())
 		return err
 	}
-	println("Matched: ", updatedResults.MatchedCount, " | Modified: ", updatedResults.ModifiedCount)
+	log.Printf("Matched: %d | Modified: %d", updatedResults.MatchedCount, updatedResults.ModifiedCount)
 	return nil
 }
 

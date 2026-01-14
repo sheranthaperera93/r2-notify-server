@@ -72,13 +72,13 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println("Upgrade error:", err.Error())
+			log.Printf("Upgrade error: %v", err.Error())
 			return
 		}
 
 		clientID := r.URL.Query().Get("userId")
 		if clientID == "" {
-			log.Println("Missing user ID")
+			log.Printf("Missing user ID")
 			conn.Close()
 			return
 		}
@@ -111,16 +111,16 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 
 		// Handle Enable Notification Configuration
 		isEnableNotification := true
-		log.Println("Fetching configuration for client:", clientID)
+		log.Printf("Fetching configuration for client: %s", clientID)
 		configuration, err := configurationService.FindByAppAndUser(clientID)
 		if err != nil {
 			_, err = configurationService.Create(models.Configuration{
 				UserId:              clientID,
 				EnableNotifications: isEnableNotification,
 			})
-			log.Println("Created configuration for client: ", clientID)
+			log.Printf("Created configuration for client: %s", clientID)
 			if err != nil {
-				log.Println("Create configuration error:", err.Error())
+				log.Printf("Create configuration error: %v", err.Error())
 				conn.Close()
 				return
 			}
@@ -135,7 +135,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		}
 
 		if err := clientStore.StoreClient(info, conn); err != nil {
-			log.Println("Redis store error:", err.Error())
+			log.Printf("Redis store error: %v", err.Error())
 			conn.Close()
 			return
 		}
@@ -162,7 +162,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				// Parse events
 				var action data.Action
 				if err := json.Unmarshal(message, &action); err != nil {
-					log.Println("Invalid event format:", err.Error())
+					log.Printf("Invalid event format: %v", err.Error())
 					continue
 				}
 
@@ -194,7 +194,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				case data.TOGGLE_NOTIFICATION_STATUS:
 					toggleNotificationStatusAction(message, configurationService, notificationService, clientID)
 				default:
-					log.Println("Unknown event type:", action.Action)
+					log.Printf("Unknown event type: %s", action.Action)
 				}
 			}
 		}()
@@ -213,11 +213,11 @@ func sendAllNotificationsToClient(notificationService notificationService.Notifi
 		Data:   notifications,
 	}
 	if err != nil {
-		log.Println("Failed to fetch notifications:", err.Error())
+		log.Printf("Failed to fetch notifications: %v", err.Error())
 	} else {
-		log.Println("Sending all notifications to client:", clientId)
+		log.Printf("Sending all notifications to client: %s", clientId)
 		if err := clientStore.SendNotificationListToUser(clientId, payload); err != nil {
-			log.Println("Failed to send notifications:", err.Error())
+			log.Printf("Failed to send notifications: %v", err.Error())
 		}
 	}
 }
@@ -235,11 +235,11 @@ func sendConfigurationsToClient(configurationService configurationService.Config
 		Id:                 configuration.Id,
 	}
 	if err != nil {
-		log.Println("Failed to fetch configurations:", err.Error())
+		log.Printf("Failed to fetch configurations: %v", err.Error())
 	} else {
-		log.Println("Sending configurations to client:", clientId)
+		log.Printf("Sending configurations to client: %s", clientId)
 		if err := clientStore.SendConfigurationToUser(payload, true); err != nil {
-			log.Println("Failed to send configurations:", err.Error())
+			log.Printf("Failed to send configurations: %v", err.Error())
 		}
 	}
 }
@@ -248,10 +248,10 @@ func sendConfigurationsToClient(configurationService configurationService.Config
 // It marks all notifications as read and then sends the updated list of notifications back to the client.
 // Logs errors if the update operation fails.
 func markAsReadAction(notificationService notificationService.NotificationService, clientID string) {
-	log.Println("Marking all notifications as read for client:", clientID)
+	log.Printf("Marking all notifications as read for client: %s", clientID)
 	err := notificationService.MarkAsRead(clientID)
 	if err != nil {
-		log.Println("Failed to mark all as read:", err.Error())
+		log.Printf("Failed to mark all as read: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -263,13 +263,13 @@ func markAsReadAction(notificationService notificationService.NotificationServic
 func markAppReadAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Marking all notifications for app as read for client:", clientID, " App ID:", event.AppId)
+	log.Printf("Marking all notifications for app as read for client: %s, App ID: %s", clientID, event.AppId)
 	err := notificationService.MarkAppAsRead(clientID, event.AppId)
 	if err != nil {
-		log.Println("Failed to mark as read:", err.Error())
+		log.Printf("Failed to mark as read: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -281,13 +281,13 @@ func markAppReadAction(message []byte, notificationService notificationService.N
 func markGroupAsReadAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Marking group as read for client:", clientID, " App ID:", event.AppId, " Group Key:", event.GroupKey)
+	log.Printf("Marking group as read for client: %s, App ID: %s, Group Key: %s", clientID, event.AppId, event.GroupKey)
 	err := notificationService.MarkGroupAsRead(clientID, event.AppId, event.GroupKey)
 	if err != nil {
-		log.Println("Failed to mark as read:", err.Error())
+		log.Printf("Failed to mark as read: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -299,13 +299,13 @@ func markGroupAsReadAction(message []byte, notificationService notificationServi
 func markNotificationAsReadAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Marking notification as read for client:", clientID, " Notification ID:", event.Id)
+	log.Printf("Marking notification as read for client: %s, Notification ID: %s", clientID, event.Id)
 	err := notificationService.MarkNotificationAsRead(clientID, event.Id)
 	if err != nil {
-		log.Println("Failed to mark as read:", err.Error())
+		log.Printf("Failed to mark as read: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -315,10 +315,10 @@ func markNotificationAsReadAction(message []byte, notificationService notificati
 // in the database. If successful, it sends the updated list of notifications back to the client.
 // Logs errors if the message format is invalid or if the update operation fails.
 func deleteNotificationsAction(notificationService notificationService.NotificationService, clientID string) {
-	log.Println("Deleting notifications for client:", clientID)
+	log.Printf("Deleting notifications for client: %s", clientID)
 	err := notificationService.DeleteNotifications(clientID)
 	if err != nil {
-		log.Println("Failed to delete all notifications:", err.Error())
+		log.Printf("Failed to delete all notifications: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -330,13 +330,13 @@ func deleteNotificationsAction(notificationService notificationService.Notificat
 func deleteAppNotificationsAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Deleting all notifications for app as read for client:", clientID, " App ID:", event.AppId)
+	log.Printf("Deleting all notifications for app as read for client: %s, App ID: %s", clientID, event.AppId)
 	err := notificationService.DeleteAppNotifications(clientID, event.AppId)
 	if err != nil {
-		log.Println("Failed to delete app notifications:", err.Error())
+		log.Printf("Failed to delete app notifications: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -348,13 +348,13 @@ func deleteAppNotificationsAction(message []byte, notificationService notificati
 func deleteGroupNotificationAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Deleting group notifications for client:", clientID, " App ID:", event.AppId, " Group Key:", event.GroupKey)
+	log.Printf("Deleting group notifications for client: %s, App ID: %s, Group Key: %s", clientID, event.AppId, event.GroupKey)
 	err := notificationService.DeleteGroupNotifications(clientID, event.AppId, event.GroupKey)
 	if err != nil {
-		log.Println("Failed to delete group notifications:", err.Error())
+		log.Printf("Failed to delete group notifications: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -366,13 +366,13 @@ func deleteGroupNotificationAction(message []byte, notificationService notificat
 func deleteNotificationAction(message []byte, notificationService notificationService.NotificationService, clientID string) {
 	var event data.ActionNotification
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
-	log.Println("Deleting notification for client:", clientID, " Notification ID:", event.Id)
+	log.Printf("Deleting notification for client: %s, Notification ID: %s", clientID, event.Id)
 	err := notificationService.DeleteNotification(clientID, event.Id)
 	if err != nil {
-		log.Println("Failed to delete notification:", err.Error())
+		log.Printf("Failed to delete notification: %v", err.Error())
 	}
 	sendAllNotificationsToClient(notificationService, clientID)
 }
@@ -385,7 +385,7 @@ func deleteNotificationAction(message []byte, notificationService notificationSe
 func toggleNotificationStatusAction(message []byte, configurationService configurationService.ConfigurationService, notificationService notificationService.NotificationService, clientID string) {
 	var event data.Configuration
 	if err := json.Unmarshal(message, &event); err != nil {
-		log.Println("Invalid event format:", err.Error())
+		log.Printf("Invalid event format: %v", err.Error())
 		return
 	}
 	err := configurationService.Update(models.Configuration{
@@ -393,15 +393,15 @@ func toggleNotificationStatusAction(message []byte, configurationService configu
 		EnableNotifications: event.EnableNotification,
 	})
 	if err != nil {
-		log.Println("Failed to update configuration:", err.Error())
+		log.Printf("Failed to update configuration: %v", err.Error())
 	}
-	log.Println("Updated configuration for client:", clientID)
+	log.Printf("Updated configuration for client: %s", clientID)
 	clientStore.UpdateClientInfo(models.ClientInfo{
 		ID:                 clientID,
 		EnableNotification: event.EnableNotification,
 	})
 	if event.EnableNotification {
-		log.Println("Sending all notifications to client:", clientID)
+		log.Printf("Sending all notifications to client: %s", clientID)
 		sendAllNotificationsToClient(notificationService, clientID)
 	}
 	// Send updated configuration to client

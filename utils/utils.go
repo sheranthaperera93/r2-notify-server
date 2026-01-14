@@ -3,6 +3,8 @@ package utils
 import (
 	"r2-notify/data"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func ProcessAllowedOrigins(origins string) []string {
@@ -14,4 +16,8 @@ func ProcessAllowedOrigins(origins string) []string {
 		allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
 	}
 	return allowedOrigins
+}
+
+func GenerateUUID() string {
+	return uuid.New().String()
 }

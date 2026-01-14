@@ -29,3 +29,18 @@ const (
 	RELOAD_NOTIFICATIONS       = "reloadNotifications"
 	TOGGLE_NOTIFICATION_STATUS = "toggleNotificationStatus"
 )
+
+const (
+	LOG_METHOD_FILE  = "file"
+	LOG_METHOD_AZURE = "azure"
+)
+
+// Log Levels
+const (
+	DEBUG = "debug"
+	INFO  = "info"
+	WARN  = "warn"
+	ERROR = "error"
+)
+
+const CORRELATION_ID = "correlationId"

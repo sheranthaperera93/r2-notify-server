@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"r2-notify/config"
 	"r2-notify/data"
+	"r2-notify/logger"
 	"r2-notify/models"
 	clientStore "r2-notify/services"
 	notificationService "r2-notify/services/notification"
+	"r2-notify/utils"
 	"time"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"
@@ -28,7 +30,12 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 	if err != nil {
 		return fmt.Errorf("failed to connect to Event Hub: %w", err)
 	}
-	fmt.Println("Connected to Event Hub")
+	logger.Log.Info(logger.LogPayload{
+		Message:   "Connected to Event Hub",
+		Service:   "Azure EventHub",
+		Component: "EventHub Consumer",
+		Operation: "StartEventHubConsumer",
+	})
 
 	// Default consumer group
 	runtimeInfo, err := hub.GetRuntimeInformation(ctx)
@@ -40,16 +47,29 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 		go func(pid string) {
 			hub.Receive(ctx, pid, func(ctx context.Context, event *eventhub.Event) error {
 
-				fmt.Println("Received event:", string(event.Data))
+				correlationId := utils.GenerateUUID()
+
+				logger.Log.Info(logger.LogPayload{
+					Message:       fmt.Sprintf("Received event from Event Hub %s", string(event.Data)),
+					Service:       "Azure EventHub",
+					Component:     "EventHub Consumer",
+					Operation:     "OnEventReceived",
+					CorrelationId: correlationId,
+				})
 
 				var eventData data.EventHubNotificationPayload
 				if err := json.Unmarshal(event.Data, &eventData); err != nil {
-					fmt.Println("Invalid message format:", err)
+					logger.Log.Error(logger.LogPayload{
+						Message:       "Invalid message format",
+						Service:       "Azure EventHub",
+						Component:     "EventHub Consumer",
+						Operation:     "OnEventReceived",
+						Error:         err,
+						CorrelationId: correlationId,
+					})
 					return nil
 				}
-
-				fmt.Println("Received Event:", eventData)
-
+				// Prepare notification model
 				m := models.Notification{
 					UserId:     eventData.UserId,
 					AppId:      eventData.AppId,
@@ -64,13 +84,20 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 				// Create notification record in database
 				recordId, err := notificationService.Create(m)
 				if err != nil {
-					fmt.Println("Notification entry insert error:", err)
+					logger.Log.Error(logger.LogPayload{
+						Message:       "Notification entry insert error",
+						Service:       "Azure EventHub",
+						Component:     "EventHub Consumer",
+						Operation:     "OnEventReceived",
+						Error:         err,
+						CorrelationId: correlationId,
+					})
 					return nil
 				}
 
 				// Send Notification to connected client web socket
 				payload := data.ActionNotification{
-					Action: data.Action{Action: "newNotification"},
+					Action: data.Action{Action: data.NEW_NOTIFICATION},
 					Notification: data.Notification{
 						Id:        recordId.Hex(),
 						UserID:    eventData.UserId,
@@ -84,13 +111,27 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 				}
 				m.Id = recordId
 				clientStore.SendNotificationToUser(payload)
+
+				logger.Log.Info(logger.LogPayload{
+					Message:       fmt.Sprintf("Sending notification to user %v", m),
+					Service:       "Azure EventHub",
+					Component:     "EventHub Consumer",
+					Operation:     "OnEventReceived",
+					CorrelationId: correlationId,
+				})
+
 				return nil
 			}, eventhub.ReceiveWithLatestOffset())
 		}(partitionID)
 	}
 
-	ctx.Done()
-	fmt.Println("Shutting down Event Hub consumer...")
+	<-ctx.Done()
+	logger.Log.Info(logger.LogPayload{
+		Message:   "Shutting down event hub consumer",
+		Service:   "Azure EventHub",
+		Component: "EventHub Consumer",
+		Operation: "Shutdown EventHub Consumer",
+	})
 	hub.Close(context.Background())
 
 	return nil

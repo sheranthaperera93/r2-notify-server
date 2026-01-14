@@ -19,7 +19,7 @@ func MongoConnection() *mongo.Database {
 	mongoRetryWrites := LoadConfig().mongoRetryWrites
 	mongoSsl := LoadConfig().mongoSsl
 
-	fmt.Println("Mongo Configurations", host, port, dbName, username, password, mongoRetryWrites, mongoSsl)
+	log.Printf("Mongo Configurations: host=%s, port=%d, dbName=%s, username=%s, password=***, mongoRetryWrites=%s, mongoSsl=%s", host, port, dbName, username, mongoRetryWrites, mongoSsl)
 	uri := fmt.Sprintf(
 		"mongodb://%s:%s@%s:%d/?ssl=%s&retrywrites=%s",
 		username,
@@ -30,7 +30,7 @@ func MongoConnection() *mongo.Database {
 		mongoRetryWrites,
 	)
 
-	fmt.Println("Mongo Connection URI:", uri)
+	log.Printf("Mongo Connection URI: %s", uri)
 
 	clientOptions := options.Client().ApplyURI(uri).SetDirect(true)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -46,6 +46,6 @@ func MongoConnection() *mongo.Database {
 		log.Fatalf("MongoDB ping error: %v", err)
 	}
 
-	log.Default().Printf("Connected to MongoDB at %s:%d, using database: %s", host, port, dbName)
+	log.Printf("Connected to MongoDB at %s:%d, using database: %s", host, port, dbName)
 	return client.Database(dbName)
 }
