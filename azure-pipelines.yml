@@ -1,0 +1,96 @@
+trigger:
+  - develop
+# trigger: none
+
+variables:
+  # ---- Include variable group
+  - group: NotificationService-Prod
+
+  - name: tag
+    value: prod-$(Build.BuildId)
+
+stages:
+  - stage: BuildAndPush
+    displayName: "Build and Push Docker Image"
+    jobs:
+      - job: DockerBuild
+        displayName: Build + Push
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+            fetchDepth: "1"
+
+          - bash: |
+              set -euo pipefail
+
+              echo "Logging in to Azure with Service Principal..."
+              az login --service-principal \
+              -u $(SP_CLIENT_ID) \
+              -p $(SP_CLIENT_SECRET) \
+              --tenant $(SP_TENANT_ID) > /dev/null
+
+              echo "Logging in to Azure Container Registry..."
+              az acr login --name $(ACR_NAME)
+
+              echo "Building Docker image from notification-service..."
+              DOCKERFILE_PATH="$(Build.SourcesDirectory)/Dockerfile"
+              BUILD_CONTEXT="$(Build.SourcesDirectory)/"
+
+              echo "Dockerfile: $DOCKERFILE_PATH"
+              echo "Context   : $BUILD_CONTEXT"
+              echo "Tag       : $(ACR_LOGIN_SVR)/$(IMAGE_NAME):$(tag)"
+
+              docker build \
+              -t "$(ACR_LOGIN_SVR)/$(IMAGE_NAME):$(tag)" \
+              -f "$DOCKERFILE_PATH" \
+              "$BUILD_CONTEXT"
+
+              echo "Pushing image to ACR..."
+              docker push "$(ACR_LOGIN_SVR)/$(IMAGE_NAME):$(tag)"
+
+              echo "Done."
+            displayName: "Azure Login + Docker Build and Push"
+
+  - stage: Deploy
+    displayName: "Deploy Stage"
+    dependsOn: BuildAndPush
+    jobs:
+      - job: DeployContainerApp
+        displayName: Deploy Container App
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - bash: |
+              set -euo pipefail
+
+              echo "Logging in to Azure with Service Principal..."
+              az login --service-principal \
+              -u $(SP_CLIENT_ID) \
+              -p $(SP_CLIENT_SECRET) \
+              --tenant $(SP_TENANT_ID) > /dev/null
+
+              echo "Updating container app with new image..."
+              az containerapp update \
+                --name $(CONTAINER_APP_NAME) \
+                --resource-group $(RESOURCE_GROUP) \
+                --image $(ACR_LOGIN_SVR)/$(IMAGE_NAME):$(tag) \
+                --cpu 0.5 --memory 1.0Gi \
+                --min-replicas 1 --max-replicas 3 \
+                --set-env-vars \
+                    REDIS_PASSWORD=$(REDIS_PASSWORD) \
+                    REDIS_HOST=${REDIS_HOST} \
+                    REDIS_PORT=${REDIS_PORT} \
+                    MONGO_HOST=${MONGO_HOST} \
+                    MONGO_PORT=${MONGO_PORT} \
+                    MONGO_USER_NAME=${MONGO_USER_NAME} \
+                    MONGO_PASSWORD=$(MONGO_PASSWORD) \
+                    MONGO_DB_NAME=${MONGO_DB_NAME} \
+                    EVENT_HUB_NAMESPACE_CON_STRING=$(EVENT_HUB_NAMESPACE_CON_STRING) \
+                    EVENT_HUB_NOTIFICATION_EVENT_NAME=${EVENT_HUB_NOTIFICATION_EVENT_NAME} \
+                    PORT=${PORT} \
+                    ENV=${ENV} \
+                    ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+
+              echo "Done."
+            displayName: "Deploy Notification Service to Container App..."
