@@ -13,6 +13,8 @@ type Config struct {
 	MongoDBName                   string
 	MongoUserName                 string
 	MongoPassword                 string
+	mongoRetryWrites              string
+	mongoSsl                      string
 	RedisHost                     string
 	RedisPort                     int
 	RedisPassword                 string
@@ -30,6 +32,8 @@ func LoadConfig() *Config {
 		MongoDBName:                   GetEnv("MONGO_DB_NAME", "go_rampup"),
 		MongoUserName:                 GetEnv("MONGO_USER_NAME", ""),
 		MongoPassword:                 GetEnv("MONGO_PASSWORD", ""),
+		mongoRetryWrites:              GetEnv("MONGO_RETRY_WRITES", "true"),
+		mongoSsl:                      GetEnv("MONGO_SSL", "false"),
 		RedisHost:                     GetEnv("REDIS_HOST", "localhost"),
 		RedisPort:                     GetEnvInt("REDIS_PORT", 6379),
 		RedisPassword:                 GetEnv("REDIS_PASSWORD", ""),

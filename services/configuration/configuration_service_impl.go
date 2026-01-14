@@ -1,10 +1,10 @@
 package configurationService
 
 import (
-	"address-book-notification-service/data"
-	"address-book-notification-service/models"
-	configurationRepository "address-book-notification-service/repository/configuration"
 	"errors"
+	"r2-notify/data"
+	"r2-notify/models"
+	configurationRepository "r2-notify/repository/configuration"
 
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"

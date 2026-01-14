@@ -1,9 +1,9 @@
 package notificationRepository
 
 import (
-	"address-book-notification-service/models"
 	"context"
 	"errors"
+	"r2-notify/models"
 	"strings"
 	"time"
 

@@ -1,4 +1,4 @@
-module address-book-notification-service
+module r2-notify
 
 go 1.24.3
 

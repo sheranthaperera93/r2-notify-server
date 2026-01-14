@@ -1,7 +1,7 @@
 package router
 
 import (
-	"address-book-notification-service/controller"
+	"r2-notify/controller"
 
 	"github.com/gin-gonic/gin"
 )

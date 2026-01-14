@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"address-book-notification-service/config"
-	"address-book-notification-service/data"
-	"address-book-notification-service/models"
-	clientStore "address-book-notification-service/services"
-	configurationService "address-book-notification-service/services/configuration"
-	notificationService "address-book-notification-service/services/notification"
+	"r2-notify/config"
+	"r2-notify/data"
+	"r2-notify/models"
+	clientStore "r2-notify/services"
+	configurationService "r2-notify/services/configuration"
+	notificationService "r2-notify/services/notification"
 
 	"github.com/gorilla/websocket"
 )
@@ -169,29 +169,29 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				// Handle events
 				switch action.Action {
 				// Mark as Read Actions
-				case "markAsRead":
+				case data.MARK_AS_READ:
 					markAsReadAction(notificationService, clientID)
-				case "markAppAsRead":
+				case data.MARK_APP_AS_READ:
 					markAppReadAction(message, notificationService, clientID)
-				case "markGroupAsRead":
+				case data.MARK_GROUP_AS_READ:
 					markGroupAsReadAction(message, notificationService, clientID)
-				case "markNotificationAsRead":
+				case data.MARK_NOTIFICATION_AS_READ:
 					markNotificationAsReadAction(message, notificationService, clientID)
 
 				// Delete Actions
-				case "deleteNotifications":
+				case data.DELETE_NOTIFICATIONS:
 					deleteNotificationsAction(notificationService, clientID)
-				case "deleteAppNotifications":
+				case data.DELETE_APP_NOTIFICATIONS:
 					deleteAppNotificationsAction(message, notificationService, clientID)
-				case "deleteGroupNotifications":
+				case data.DELETE_GROUP_NOTIFICATIONS:
 					deleteGroupNotificationAction(message, notificationService, clientID)
-				case "deleteNotification":
+				case data.DELETE_NOTIFICATION:
 					deleteNotificationAction(message, notificationService, clientID)
 
 				// Other Actions
-				case "reloadNotifications":
+				case data.RELOAD_NOTIFICATIONS:
 					sendAllNotificationsToClient(notificationService, clientID)
-				case "toggleNotificationStatus":
+				case data.TOGGLE_NOTIFICATION_STATUS:
 					toggleNotificationStatusAction(message, configurationService, notificationService, clientID)
 				default:
 					log.Println("Unknown event type:", action.Action)
@@ -209,7 +209,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 func sendAllNotificationsToClient(notificationService notificationService.NotificationService, clientId string) {
 	notifications, err := notificationService.FindAll(clientId)
 	payload := data.NotificationList{
-		Action: data.Action{Action: "listNotifications"},
+		Action: data.Action{Action: data.LIST_NOTIFICATIONS},
 		Data:   notifications,
 	}
 	if err != nil {
@@ -229,7 +229,7 @@ func sendAllNotificationsToClient(notificationService notificationService.Notifi
 func sendConfigurationsToClient(configurationService configurationService.ConfigurationService, clientId string) {
 	configuration, err := configurationService.FindByAppAndUser(clientId)
 	payload := data.Configuration{
-		Action:             data.Action{Action: "listConfigurations"},
+		Action:             data.Action{Action: data.LIST_CONFIGURATIONS},
 		UserID:             clientId,
 		EnableNotification: configuration.EnableNotification,
 		Id:                 configuration.Id,

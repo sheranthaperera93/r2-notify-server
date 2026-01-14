@@ -1,19 +1,20 @@
 package main
 
 import (
-	"address-book-notification-service/config"
-	"address-book-notification-service/controller"
-	"address-book-notification-service/event-hub/consumer"
-	"address-book-notification-service/handlers"
-	configurationRepository "address-book-notification-service/repository/configuration"
-	notificationRepository "address-book-notification-service/repository/notification"
-	"address-book-notification-service/router"
-	configurationService "address-book-notification-service/services/configuration"
-	notificationService "address-book-notification-service/services/notification"
 	"context"
 	"log"
 	"net/http"
 	"os"
+	"r2-notify/config"
+	"r2-notify/controller"
+	"r2-notify/data"
+	"r2-notify/event-hub/consumer"
+	"r2-notify/handlers"
+	configurationRepository "r2-notify/repository/configuration"
+	notificationRepository "r2-notify/repository/notification"
+	"r2-notify/router"
+	configurationService "r2-notify/services/configuration"
+	notificationService "r2-notify/services/notification"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,7 @@ func main() {
 	processAllowedOrigins()
 
 	// Only load .env file in local development
-	if os.Getenv("ENV") != "production" {
+	if os.Getenv("ENV") != data.PRODUCTION_ENV {
 		err := godotenv.Load()
 		if err != nil {
 			log.Fatal("Error loading .env file")
@@ -94,7 +95,7 @@ func main() {
 func processAllowedOrigins() {
 	origins := config.LoadConfig().AllowedOrigins
 	if origins == "" {
-		origins = "http://127.0.0.1:4200,http://localhost:4200"
+		origins = data.DEFAULT_ORIGINS
 	}
 	allowedOrigins = strings.Split(origins, ",")
 	for i := range allowedOrigins {

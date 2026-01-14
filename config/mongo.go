@@ -16,20 +16,19 @@ func MongoConnection() *mongo.Database {
 	dbName := LoadConfig().MongoDBName
 	username := LoadConfig().MongoUserName
 	password := LoadConfig().MongoPassword
+	mongoRetryWrites := LoadConfig().mongoRetryWrites
+	mongoSsl := LoadConfig().mongoSsl
 
-	uri := ""
-	if LoadConfig().Environment == "development" {
-		uri = "mongodb://localhost:27017/"
-	} else {
-		fmt.Println("Mongo Configurations", host, port, dbName, username, password)
-		uri = fmt.Sprintf(
-			"mongodb://%s:%s@%s:%d/?ssl=true&retrywrites=false",
-			username,
-			password,
-			host,
-			port,
-		)
-	}
+	fmt.Println("Mongo Configurations", host, port, dbName, username, password, mongoRetryWrites, mongoSsl)
+	uri := fmt.Sprintf(
+		"mongodb://%s:%s@%s:%d/?ssl=%s&retrywrites=%s",
+		username,
+		password,
+		host,
+		port,
+		mongoSsl,
+		mongoRetryWrites,
+	)
 
 	fmt.Println("Mongo Connection URI:", uri)
 

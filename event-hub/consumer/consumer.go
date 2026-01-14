@@ -3,15 +3,15 @@ package consumer
 // Package consumer contains the code for the Event Hub notification event consumers.
 
 import (
-	"address-book-notification-service/config"
-	"address-book-notification-service/data"
-	"address-book-notification-service/models"
-	clientStore "address-book-notification-service/services"
-	notificationService "address-book-notification-service/services/notification"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"r2-notify/config"
+	"r2-notify/data"
+	"r2-notify/models"
+	clientStore "r2-notify/services"
+	notificationService "r2-notify/services/notification"
 	"time"
 
 	eventhub "github.com/Azure/azure-event-hubs-go/v3"

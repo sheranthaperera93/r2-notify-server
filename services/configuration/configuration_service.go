@@ -1,8 +1,8 @@
 package configurationService
 
 import (
-	"address-book-notification-service/data"
-	"address-book-notification-service/models"
+	"r2-notify/data"
+	"r2-notify/models"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

@@ -1,11 +1,11 @@
 package clientStore
 
 import (
-	"address-book-notification-service/config"
-	"address-book-notification-service/data"
-	"address-book-notification-service/models"
 	"encoding/json"
 	"errors"
+	"r2-notify/config"
+	"r2-notify/data"
+	"r2-notify/models"
 	"sync"
 
 	"github.com/gorilla/websocket"
