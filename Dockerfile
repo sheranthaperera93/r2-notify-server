@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24.3-alpine AS builder
+FROM golang:1.25-alpine3.19 AS builder
 WORKDIR /app
 
 # Copy go.mod and go.sum first to leverage Docker cache for dependencies

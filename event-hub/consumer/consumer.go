@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"r2-notify/config"
 	"r2-notify/data"
 	"r2-notify/models"
@@ -45,11 +44,11 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 
 				var eventData data.EventHubNotificationPayload
 				if err := json.Unmarshal(event.Data, &eventData); err != nil {
-					log.Println("Invalid message format:", err)
+					fmt.Println("Invalid message format:", err)
 					return nil
 				}
 
-				log.Println("Received Event:", eventData)
+				fmt.Println("Received Event:", eventData)
 
 				m := models.Notification{
 					UserId:     eventData.UserId,
@@ -65,7 +64,7 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 				// Create notification record in database
 				recordId, err := notificationService.Create(m)
 				if err != nil {
-					log.Println("Notification entry insert error:", err)
+					fmt.Println("Notification entry insert error:", err)
 					return nil
 				}
 
@@ -90,6 +89,9 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 		}(partitionID)
 	}
 
-	select {} // Keep running
+	ctx.Done()
+	fmt.Println("Shutting down Event Hub consumer...")
+	hub.Close(context.Background())
 
+	return nil
 }
