@@ -5,6 +5,7 @@ import (
 	"errors"
 	"r2-notify/config"
 	"r2-notify/data"
+	"r2-notify/logger"
 	"r2-notify/models"
 	"sync"
 
@@ -20,32 +21,98 @@ var (
 // and stores the updated models.ClientInfo struct in Redis.
 // It is safe to call this function concurrently from multiple goroutines.
 func StoreClient(info models.ClientInfo, conn *websocket.Conn) error {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "StoreClient",
+		Message:   "Storing client in memory for clientID: " + info.ID,
+		UserId:    info.ID,
+	})
 	clientsMutex.Lock()
 	clients[info.ID] = append(clients[info.ID], conn)
 	clientsMutex.Unlock()
 	// Marshal and store the updated ClientInfo struct in Redis
 	data, _ := json.Marshal(info)
-	return config.RDB.Set(config.Ctx, "client:"+info.ID, data, 0).Err()
+	err := config.RDB.Set(config.Ctx, "client:"+info.ID, data, 0).Err()
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "StoreClient",
+			Message:   "Failed to store client in Redis for clientID: " + info.ID,
+			Error:     err,
+			UserId:    info.ID,
+		})
+		return err
+	}
+	logger.Log.Info(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "StoreClient",
+		Message:   "Successfully stored client for clientID: " + info.ID,
+		UserId:    info.ID,
+	})
+	return nil
 }
 
 // DeleteClient removes the client with the given ID from the in-memory map and from Redis, where the client's info is stored.
 // It is safe to call this function concurrently from multiple goroutines.
 func DeleteClient(id string) error {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "DeleteClient",
+		Message:   "Deleting client for clientID: " + id,
+		UserId:    id,
+	})
 	clientsMutex.Lock()
 	delete(clients, id)
 	clientsMutex.Unlock()
-	return config.RDB.Del(config.Ctx, "client:"+id).Err()
+	err := config.RDB.Del(config.Ctx, "client:"+id).Err()
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "DeleteClient",
+			Message:   "Failed to delete client from Redis for clientID: " + id,
+			Error:     err,
+			UserId:    id,
+		})
+		return err
+	}
+	logger.Log.Info(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "DeleteClient",
+		Message:   "Successfully deleted client for clientID: " + id,
+		UserId:    id,
+	})
+	return nil
 }
 
 // RemoveConnection removes a single connection from the list of connections for the given user.
 // If the last connection is removed, it also removes the user from the in-memory map and from Redis.
 // It is safe to call this function concurrently from multiple goroutines.
 func RemoveConnection(userId string, conn *websocket.Conn) {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "RemoveConnection",
+		Message:   "Removing connection for userId: " + userId,
+		UserId:    userId,
+	})
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 
 	conns, exists := clients[userId]
 	if !exists {
+		logger.Log.Warn(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "RemoveConnection",
+			Message:   "User not found in clients map for userId: " + userId,
+			UserId:    userId,
+		})
 		return
 	}
 
@@ -61,8 +128,22 @@ func RemoveConnection(userId string, conn *websocket.Conn) {
 		// No connections left, clean up completely
 		delete(clients, userId)
 		_ = config.RDB.Del(config.Ctx, "client:"+userId).Err()
+		logger.Log.Info(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "RemoveConnection",
+			Message:   "Removed last connection and cleaned up client for userId: " + userId,
+			UserId:    userId,
+		})
 	} else {
 		clients[userId] = remaining
+		logger.Log.Debug(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "RemoveConnection",
+			Message:   "Removed connection for userId: " + userId,
+			UserId:    userId,
+		})
 	}
 }
 
@@ -70,14 +151,44 @@ func RemoveConnection(userId string, conn *websocket.Conn) {
 // It returns the models.ClientInfo struct and an error if the client does not exist.
 // It is safe to call this function concurrently from multiple goroutines.
 func GetClientInfo(id string) (models.ClientInfo, error) {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "GetClientInfo",
+		Message:   "Fetching client info for clientID: " + id,
+		UserId:    id,
+	})
 	val, err := config.RDB.Get(config.Ctx, "client:"+id).Result()
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "GetClientInfo",
+			Message:   "Failed to fetch client info from Redis for clientID: " + id,
+			Error:     err,
+			UserId:    id,
+		})
 		return models.ClientInfo{}, err
 	}
 	var clientInfo models.ClientInfo
 	if err := json.Unmarshal([]byte(val), &clientInfo); err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "GetClientInfo",
+			Message:   "Failed to unmarshal client info for clientID: " + id,
+			Error:     err,
+			UserId:    id,
+		})
 		return models.ClientInfo{}, err
 	}
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "GetClientInfo",
+		Message:   "Successfully fetched client info for clientID: " + id,
+		UserId:    id,
+	})
 	return clientInfo, nil
 }
 
@@ -85,8 +196,34 @@ func GetClientInfo(id string) (models.ClientInfo, error) {
 // It serializes the ClientInfo struct to JSON and stores it under the key "client:<ID>".
 // Returns an error if the operation fails.
 func UpdateClientInfo(info models.ClientInfo) error {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "UpdateClientInfo",
+		Message:   "Updating client info for clientID: " + info.ID,
+		UserId:    info.ID,
+	})
 	data, _ := json.Marshal(info)
-	return config.RDB.Set(config.Ctx, "client:"+info.ID, data, 0).Err()
+	err := config.RDB.Set(config.Ctx, "client:"+info.ID, data, 0).Err()
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "UpdateClientInfo",
+			Message:   "Failed to update client info in Redis for clientID: " + info.ID,
+			Error:     err,
+			UserId:    info.ID,
+		})
+		return err
+	}
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "UpdateClientInfo",
+		Message:   "Successfully updated client info for clientID: " + info.ID,
+		UserId:    info.ID,
+	})
+	return nil
 }
 
 // SendNotificationToUser sends a notification to a user identified by the UserID field in the given
@@ -135,27 +272,73 @@ func getConnAndInfo(userID string) ([]*websocket.Conn, *models.ClientInfo, error
 // Connections that fail to receive the message are removed from the active list.
 // Returns an error if the user is not connected or if JSON marshalling fails.
 func sendToUser(userID string, payload interface{}, bypassNotificationCheck bool) error {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "SendToUser",
+		Message:   "Sending payload to userId: " + userID,
+		UserId:    userID,
+	})
 	clientsMutex.RLock()
 	defer clientsMutex.RUnlock()
 	conns, clientInfo, err := getConnAndInfo(userID)
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "SendToUser",
+			Message:   "Failed to get client connections for userId: " + userID,
+			Error:     err,
+			UserId:    userID,
+		})
 		return err
 	}
 	if !bypassNotificationCheck && !clientInfo.EnableNotification {
-		return errors.New("notifications are disabled for this user")
+		notifyDisabledErr := errors.New("notifications are disabled for this user")
+		logger.Log.Warn(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "SendToUser",
+			Message:   "Notifications disabled for userId: " + userID,
+			UserId:    userID,
+		})
+		return notifyDisabledErr
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "ClientStore",
+			Operation: "SendToUser",
+			Message:   "Failed to marshal payload for userId: " + userID,
+			Error:     err,
+			UserId:    userID,
+		})
 		return err
 	}
 	var activeConns []*websocket.Conn
 	for _, conn := range conns {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+			logger.Log.Warn(logger.LogPayload{
+				Service:   "Service",
+				Component: "ClientStore",
+				Operation: "SendToUser",
+				Message:   "Failed to write message to connection for userId: " + userID,
+				Error:     err,
+				UserId:    userID,
+			})
 			continue
 		}
 		activeConns = append(activeConns, conn)
 	}
 	// Update with only active connections
 	clients[userID] = activeConns
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "ClientStore",
+		Operation: "SendToUser",
+		Message:   "Successfully sent payload to userId: " + userID,
+		UserId:    userID,
+	})
 	return nil
 }

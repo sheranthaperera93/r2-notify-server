@@ -35,7 +35,7 @@ func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 	appId := ctx.GetHeader("X-App-ID")
 	correlationId, _ := ctx.Get(data.CORRELATION_ID)
 
-	logger.Log.Info(logger.LogPayload{
+	logger.Log.Debug(logger.LogPayload{
 		Service:       "r2-notify",
 		Component:     "NotificationController",
 		Operation:     "CreateNotification",
@@ -119,7 +119,7 @@ func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 		CorrelationId: correlationId.(string),
 	})
 
-	logger.Log.Info(logger.LogPayload{
+	logger.Log.Debug(logger.LogPayload{
 		Service:       "r2-notify",
 		Component:     "NotificationController",
 		Operation:     "CreateNotification",

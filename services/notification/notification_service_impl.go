@@ -3,6 +3,7 @@ package notificationService
 import (
 	"errors"
 	"r2-notify/data"
+	"r2-notify/logger"
 	"r2-notify/models"
 	notificationRepository "r2-notify/repository/notification"
 
@@ -33,8 +34,23 @@ func NewNotificationServiceImpl(notificationRepository notificationRepository.No
 // error. If an error occurs while fetching the notifications, the error is
 // returned.
 func (t NotificationServiceImpl) FindAll(userId string) (notifications []data.Notification, err error) {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "FindAll",
+		Message:   "Fetching all notifications for userId: " + userId,
+		UserId:    userId,
+	})
 	result, err := t.NotificationRepository.FindAll(userId)
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "FindAll",
+			Message:   "Failed to fetch notifications for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
 		return nil, err
 	}
 
@@ -53,8 +69,22 @@ func (t NotificationServiceImpl) FindAll(userId string) (notifications []data.No
 		notifications = append(notifications, notification)
 	}
 	if len(notifications) == 0 {
+		logger.Log.Debug(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "FindAll",
+			Message:   "No notifications found for userId: " + userId,
+			UserId:    userId,
+		})
 		return []data.Notification{}, nil
 	}
+	logger.Log.Info(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "FindAll",
+		Message:   "Successfully fetched notifications for userId: " + userId,
+		UserId:    userId,
+	})
 	return notifications, nil
 }
 
@@ -63,8 +93,23 @@ func (t NotificationServiceImpl) FindAll(userId string) (notifications []data.No
 // is not found or an error occurs during the retrieval, it returns an empty
 // notification and the corresponding error.
 func (t *NotificationServiceImpl) FindById(id primitive.ObjectID, userId string) (notification data.Notification, err error) {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "FindById",
+		Message:   "Fetching notification by ID for userId: " + userId,
+		UserId:    userId,
+	})
 	notificationModel, err := t.NotificationRepository.FindById(id, userId)
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "FindById",
+			Message:   "Failed to fetch notification for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
 		return data.Notification{}, err
 	}
 
@@ -79,7 +124,13 @@ func (t *NotificationServiceImpl) FindById(id primitive.ObjectID, userId string)
 		CreatedAt:  notificationModel.CreatedAt,
 		UpdatedAt:  notificationModel.UpdatedAt,
 	}
-
+	logger.Log.Info(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "FindById",
+		Message:   "Successfully fetched notification for userId: " + userId,
+		UserId:    userId,
+	})
 	return notification, nil
 }
 
@@ -87,10 +138,32 @@ func (t *NotificationServiceImpl) FindById(id primitive.ObjectID, userId string)
 // notification's ID and an error if any. If an error occurs during the creation,
 // the error is returned.
 func (t *NotificationServiceImpl) Create(notification models.Notification) (primitive.ObjectID, error) {
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "Create",
+		Message:   "Creating notification for userId: " + notification.UserId,
+		UserId:    notification.UserId,
+	})
 	recordId, err := t.NotificationRepository.Create(notification)
 	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "Create",
+			Message:   "Failed to create notification for userId: " + notification.UserId,
+			Error:     err,
+			UserId:    notification.UserId,
+		})
 		return primitive.NilObjectID, err
 	}
+	logger.Log.Info(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "Create",
+		Message:   "Successfully created notification for userId: " + notification.UserId,
+		UserId:    notification.UserId,
+	})
 	return recordId, nil
 }
 
@@ -98,57 +171,201 @@ func (t *NotificationServiceImpl) Create(notification models.Notification) (prim
 // given by the user ID. If an error occurs during the operation, the error is
 // returned.
 func (t *NotificationServiceImpl) MarkAppAsRead(userId string, appId string) (err error) {
-	t.NotificationRepository.MarkAppAsRead(userId, appId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "MarkAppAsRead",
+		Message:   "Marking app notifications as read for userId: " + userId + ", appId: " + appId,
+		UserId:    userId,
+		AppId:     appId,
+	})
+	err = t.NotificationRepository.MarkAppAsRead(userId, appId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "MarkAppAsRead",
+			Message:   "Failed to mark app notifications as read for userId: " + userId + ", appId: " + appId,
+			Error:     err,
+			UserId:    userId,
+			AppId:     appId,
+		})
+	}
+	return err
 }
 
 // DeleteAppNotifications deletes all notifications of a given application for a user
 // given by the user ID. If an error occurs during the operation, the error is
 // returned.
 func (t *NotificationServiceImpl) DeleteAppNotifications(userId string, appId string) (err error) {
-	t.NotificationRepository.DeleteAppNotifications(userId, appId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "DeleteAppNotifications",
+		Message:   "Deleting app notifications for userId: " + userId + ", appId: " + appId,
+		UserId:    userId,
+		AppId:     appId,
+	})
+	err = t.NotificationRepository.DeleteAppNotifications(userId, appId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "DeleteAppNotifications",
+			Message:   "Failed to delete app notifications for userId: " + userId + ", appId: " + appId,
+			Error:     err,
+			UserId:    userId,
+			AppId:     appId,
+		})
+	}
+	return err
 }
 
 // MarkGroupAsRead marks all notifications of a given application and group key
 // as read for a user given by the user ID. If an error occurs during the
 // operation, the error is returned.
 func (t *NotificationServiceImpl) MarkGroupAsRead(userId string, appId string, groupKey string) (err error) {
-	t.NotificationRepository.MarkGroupAsRead(userId, appId, groupKey)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "MarkGroupAsRead",
+		Message:   "Marking group notifications as read for userId: " + userId + ", appId: " + appId + ", groupKey: " + groupKey,
+		UserId:    userId,
+		AppId:     appId,
+	})
+	err = t.NotificationRepository.MarkGroupAsRead(userId, appId, groupKey)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "MarkGroupAsRead",
+			Message:   "Failed to mark group notifications as read for userId: " + userId + ", appId: " + appId + ", groupKey: " + groupKey,
+			Error:     err,
+			UserId:    userId,
+			AppId:     appId,
+		})
+	}
+	return err
 }
 
 // DeleteGroupNotifications deletes all notifications of a given application and group key
 // for a user given by the user ID. If an error occurs during the operation, the error is returned.
 func (t *NotificationServiceImpl) DeleteGroupNotifications(userId string, appId string, groupKey string) (err error) {
-	t.NotificationRepository.DeleteGroupNotifications(userId, appId, groupKey)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "DeleteGroupNotifications",
+		Message:   "Deleting group notifications for userId: " + userId + ", appId: " + appId + ", groupKey: " + groupKey,
+		UserId:    userId,
+		AppId:     appId,
+	})
+	err = t.NotificationRepository.DeleteGroupNotifications(userId, appId, groupKey)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "DeleteGroupNotifications",
+			Message:   "Failed to delete group notifications for userId: " + userId + ", appId: " + appId + ", groupKey: " + groupKey,
+			Error:     err,
+			UserId:    userId,
+			AppId:     appId,
+		})
+	}
+	return err
 }
 
 // MarkNotificationAsRead marks a specific notification as read for a user given by the user ID
 // and notification ID. If an error occurs during the operation, the error is returned.
 func (t *NotificationServiceImpl) MarkNotificationAsRead(userId string, notificationId string) (err error) {
-	t.NotificationRepository.MarkNotificationAsRead(userId, notificationId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "MarkNotificationAsRead",
+		Message:   "Marking notification as read for userId: " + userId,
+		UserId:    userId,
+	})
+	err = t.NotificationRepository.MarkNotificationAsRead(userId, notificationId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "MarkNotificationAsRead",
+			Message:   "Failed to mark notification as read for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
+	}
+	return err
 }
 
 // DeleteNotification deletes a specific notification for a user given by the user ID
 // and notification ID. If an error occurs during the operation, the error is returned.
 func (t *NotificationServiceImpl) DeleteNotification(userId string, notificationId string) (err error) {
-	t.NotificationRepository.DeleteNotification(userId, notificationId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "DeleteNotification",
+		Message:   "Deleting notification for userId: " + userId,
+		UserId:    userId,
+	})
+	err = t.NotificationRepository.DeleteNotification(userId, notificationId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "DeleteNotification",
+			Message:   "Failed to delete notification for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
+	}
+	return err
 }
 
 // DeleteAllNotifications deletes all notifications for a given user ID.
 // If an error occurs during the operation, the error is returned.
 func (t *NotificationServiceImpl) DeleteNotifications(userId string) (err error) {
-	t.NotificationRepository.DeleteNotifications(userId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "DeleteNotifications",
+		Message:   "Deleting all notifications for userId: " + userId,
+		UserId:    userId,
+	})
+	err = t.NotificationRepository.DeleteNotifications(userId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "DeleteNotifications",
+			Message:   "Failed to delete notifications for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
+	}
+	return err
 }
 
 // MarkAsRead marks all notifications for a given user ID as read. If an error
 // occurs during the operation, the error is returned.
 func (t *NotificationServiceImpl) MarkAsRead(userId string) (err error) {
-	t.NotificationRepository.MarkAsRead(userId)
-	return nil
+	logger.Log.Debug(logger.LogPayload{
+		Service:   "Service",
+		Component: "NotificationService",
+		Operation: "MarkAsRead",
+		Message:   "Marking all notifications as read for userId: " + userId,
+		UserId:    userId,
+	})
+	err = t.NotificationRepository.MarkAsRead(userId)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Service:   "Service",
+			Component: "NotificationService",
+			Operation: "MarkAsRead",
+			Message:   "Failed to mark all notifications as read for userId: " + userId,
+			Error:     err,
+			UserId:    userId,
+		})
+	}
+	return err
 }

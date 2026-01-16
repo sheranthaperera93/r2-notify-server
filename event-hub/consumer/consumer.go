@@ -30,7 +30,7 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 	if err != nil {
 		return fmt.Errorf("failed to connect to Event Hub: %w", err)
 	}
-	logger.Log.Info(logger.LogPayload{
+	logger.Log.Debug(logger.LogPayload{
 		Message:   "Connected to Event Hub",
 		Service:   "Azure EventHub",
 		Component: "EventHub Consumer",
@@ -49,7 +49,7 @@ func StartEventHubConsumer(ctx context.Context, notificationService notification
 
 				correlationId := utils.GenerateUUID()
 
-				logger.Log.Info(logger.LogPayload{
+				logger.Log.Debug(logger.LogPayload{
 					Message:       fmt.Sprintf("Received event from Event Hub %s", string(event.Data)),
 					Service:       "Azure EventHub",
 					Component:     "EventHub Consumer",
