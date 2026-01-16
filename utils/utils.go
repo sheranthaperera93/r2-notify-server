@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"r2-notify/data"
+	"r2-notify-server/data"
 	"strings"
 
 	"github.com/google/uuid"

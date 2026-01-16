@@ -3,10 +3,10 @@ package clientStore
 import (
 	"encoding/json"
 	"errors"
-	"r2-notify/config"
-	"r2-notify/data"
-	"r2-notify/logger"
-	"r2-notify/models"
+	"r2-notify-server/config"
+	"r2-notify-server/data"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
 	"sync"
 
 	"github.com/gorilla/websocket"

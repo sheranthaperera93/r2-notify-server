@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"r2-notify/logger"
-	"r2-notify/models"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
 	"strings"
 	"time"
 

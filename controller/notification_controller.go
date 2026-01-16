@@ -3,11 +3,11 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"r2-notify/data"
-	"r2-notify/logger"
-	"r2-notify/models"
-	clientStore "r2-notify/services"
-	notificationService "r2-notify/services/notification"
+	"r2-notify-server/data"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
+	clientStore "r2-notify-server/services"
+	notificationService "r2-notify-server/services/notification"
 	"time"
 
 	"github.com/gin-gonic/gin"

@@ -1,7 +1,7 @@
 package router
 
 import (
-	"r2-notify/controller"
+	"r2-notify-server/controller"
 
 	"github.com/gin-gonic/gin"
 )

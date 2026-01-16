@@ -2,10 +2,10 @@ package configurationService
 
 import (
 	"errors"
-	"r2-notify/data"
-	"r2-notify/logger"
-	"r2-notify/models"
-	configurationRepository "r2-notify/repository/configuration"
+	"r2-notify-server/data"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
+	configurationRepository "r2-notify-server/repository/configuration"
 
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"

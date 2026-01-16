@@ -1,7 +1,7 @@
 package notificationRepository
 
 import (
-	"r2-notify/models"
+	"r2-notify-server/models"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

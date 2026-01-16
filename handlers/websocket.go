@@ -8,14 +8,14 @@ import (
 	"slices"
 	"time"
 
-	"r2-notify/config"
-	"r2-notify/data"
-	"r2-notify/logger"
-	"r2-notify/models"
-	clientStore "r2-notify/services"
-	configurationService "r2-notify/services/configuration"
-	notificationService "r2-notify/services/notification"
-	"r2-notify/utils"
+	"r2-notify-server/config"
+	"r2-notify-server/data"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
+	clientStore "r2-notify-server/services"
+	configurationService "r2-notify-server/services/configuration"
+	notificationService "r2-notify-server/services/notification"
+	"r2-notify-server/utils"
 
 	"github.com/gorilla/websocket"
 )

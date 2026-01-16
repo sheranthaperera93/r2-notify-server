@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"r2-notify/config"
-	"r2-notify/data"
+	"r2-notify-server/config"
+	"r2-notify-server/data"
 
 	ai "github.com/microsoft/ApplicationInsights-Go/appinsights"
 	"go.uber.org/zap"
@@ -53,7 +53,7 @@ func Init() {
 //   - Otherwise, the logger is configured to write structured JSON logs to
 //     a local file with rotation, using Zap and Lumberjack.
 //
-// The local file logger writes to "./logs/r2-notify.log" with the following
+// The local file logger writes to "./logs/r2-notify-server.log" with the following
 // rotation settings:
 //   - MaxSize:    10 MB per log file
 //   - MaxBackups: 5 rotated files retained
@@ -68,7 +68,7 @@ func Init() {
 //	// Local environment (logs to file)
 //	log := logger.NewLogger("local", "")
 //	log.Info(logger.LogPayload{
-//	    Service:   "r2-notify",
+//	    Service:   "r2-notify-server",
 //	    Component: "main",
 //	    Operation: "Startup",
 //	    Message:   "Service started",
@@ -77,7 +77,7 @@ func Init() {
 //	// Azure environment (logs to Application Insights)
 //	log := logger.NewLogger("azure", os.Getenv("APP_INSIGHTS_INSTRUMENTATION_KEY"))
 //	log.Info(logger.LogPayload{
-//	    Service:   "r2-notify",
+//	    Service:   "r2-notify-server",
 //	    Component: "eventhub-consumer",
 //	    Operation: "ReceiveEvent",
 //	    Message:   "Connected to Event Hub",
@@ -165,7 +165,7 @@ func NewTestSink(level zapcore.Level) *TestSink {
 // Example usage:
 //
 //	logPayload := logger.LogPayload{
-//	    Service:       "r2-notify",
+//	    Service:       "r2-notify-server",
 //	    Component:     "eventhub-consumer",
 //	    Operation:     "ReceiveEvent",
 //	    Message:       "Received new notification event",
@@ -221,7 +221,7 @@ func (l *Logger) Info(payload LogPayload) {
 // Example usage:
 //
 //	logPayload := logger.LogPayload{
-//	    Service:       "r2-notify",
+//	    Service:       "r2-notify-server",
 //	    Component:     "eventhub-consumer",
 //	    Operation:     "ReceiveEvent",
 //	    Message:       "Debugging event payload parsing",
@@ -276,7 +276,7 @@ func (l *Logger) Debug(payload LogPayload) {
 // Example usage:
 //
 //	logPayload := logger.LogPayload{
-//	    Service:       "r2-notify",
+//	    Service:       "r2-notify-server",
 //	    Component:     "eventhub-consumer",
 //	    Operation:     "ReceiveEvent",
 //	    Message:       "Partition lag detected",
@@ -332,7 +332,7 @@ func (l *Logger) Warn(payload LogPayload) {
 // Example usage:
 //
 //	logPayload := logger.LogPayload{
-//	    Service:       "r2-notify",
+//	    Service:       "r2-notify-server",
 //	    Component:     "notification-service",
 //	    Operation:     "CreateNotification",
 //	    Message:       "Failed to insert notification",

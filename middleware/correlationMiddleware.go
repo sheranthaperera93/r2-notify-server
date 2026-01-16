@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"r2-notify/logger"
-	"r2-notify/utils"
+	"r2-notify-server/logger"
+	"r2-notify-server/utils"
 
 	"github.com/gin-gonic/gin"
 )

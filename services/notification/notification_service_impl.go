@@ -2,10 +2,10 @@ package notificationService
 
 import (
 	"errors"
-	"r2-notify/data"
-	"r2-notify/logger"
-	"r2-notify/models"
-	notificationRepository "r2-notify/repository/notification"
+	"r2-notify-server/data"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
+	notificationRepository "r2-notify-server/repository/notification"
 
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"

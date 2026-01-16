@@ -3,8 +3,8 @@ package configurationRepository
 import (
 	"context"
 	"errors"
-	"r2-notify/logger"
-	"r2-notify/models"
+	"r2-notify-server/logger"
+	"r2-notify-server/models"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
