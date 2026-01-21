@@ -243,8 +243,8 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				// Other Events
 				case data.RELOAD_NOTIFICATIONS:
 					sendAllNotificationsToClient(notificationService, clientID, correlationId)
-				case data.TOGGLE_NOTIFICATION_STATUS:
-					toggleNotificationStatusAction(message, configurationService, notificationService, clientID, correlationId)
+				case data.SET_NOTIFICATION_STATUS:
+					setNotificationStatusAction(message, configurationService, notificationService, clientID, correlationId)
 				default:
 					logger.Log.Warn(logger.LogPayload{
 						Component:     "WebSocket Event Handler",
@@ -272,25 +272,49 @@ func sendAllNotificationsToClient(notificationService notificationService.Notifi
 	}
 	if err != nil {
 		logger.Log.Error(logger.LogPayload{
-			Component: "WebSocket Notification Handler",
-			Operation: "FetchNotifications",
-			Message:   "Failed to fetch notifications for client " + clientId,
-			Error:     err,
+			Component:     "WebSocket Notification Handler",
+			Operation:     "FetchNotifications",
+			Message:       "Failed to fetch notifications for client " + clientId,
+			CorrelationId: correlationId,
+			Error:         err,
 		})
 	} else {
 		logger.Log.Debug(logger.LogPayload{
-			Component: "WebSocket Notification Handler",
-			Operation: "SendNotifications",
-			Message:   "Sending all notifications to client: " + clientId,
+			Component:     "WebSocket Notification Handler",
+			Operation:     "SendNotifications",
+			Message:       "Sending all notifications to client: " + clientId,
+			CorrelationId: correlationId,
 		})
 		if err := clientStore.SendNotificationListToUser(clientId, payload); err != nil {
 			logger.Log.Error(logger.LogPayload{
-				Component: "WebSocket Notification Handler",
-				Operation: "SendNotifications",
-				Message:   "Failed to send notifications to client " + clientId,
-				Error:     err,
+				Component:     "WebSocket Notification Handler",
+				Operation:     "SendNotifications",
+				Message:       "Failed to send notifications to client " + clientId,
+				Error:         err,
+				CorrelationId: correlationId,
 			})
 		}
+	}
+}
+
+// sendEmptyNotificationListToClient sends all the notifications of a user to the corresponding client identified by the given clientId.
+// It first fetches all the notifications of the user using the notificationService, then constructs a payload of type NotificationList
+// encapsulating the notifications. If the fetch operation fails, it logs an error and does not send the notifications. If the fetch
+// operation is successful, it sends the constructed payload to the client using the clientStore. If the send operation fails, it logs
+// an error.
+func sendEmptyNotificationListToClient(clientId string, correlationId string) {
+	payload := data.NotificationList{
+		Event: data.Event{Event: data.LIST_NOTIFICATIONS},
+		Data:  []data.Notification{},
+	}
+	if err := clientStore.SendNotificationListToUser(clientId, payload); err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Component:     "WebSocket Notification Handler",
+			Operation:     "SendNotifications",
+			Message:       "Failed to send notifications to client " + clientId,
+			Error:         err,
+			CorrelationId: correlationId,
+		})
 	}
 }
 
@@ -627,12 +651,12 @@ func deleteNotificationAction(message []byte, notificationService notificationSe
 	sendAllNotificationsToClient(notificationService, clientID, correlationId)
 }
 
-// toggleNotificationStatusAction handles the toggle notification status event.
+// setNotificationStatusAction handles the toggle notification status event.
 // It unmarshals the incoming message to extract the configuration data, updates the user's
 // notification settings in the configuration service, and updates the client information in
 // the client store. If notifications are enabled, it sends all notifications to the client.
 // Finally, it sends the updated configuration back to the client.
-func toggleNotificationStatusAction(message []byte, configurationService configurationService.ConfigurationService, notificationService notificationService.NotificationService, clientID string, correlationId string) {
+func setNotificationStatusAction(message []byte, configurationService configurationService.ConfigurationService, notificationService notificationService.NotificationService, clientID string, correlationId string) {
 	var event data.Configuration
 	if err := json.Unmarshal(message, &event); err != nil {
 		logger.Log.Error(logger.LogPayload{
@@ -679,6 +703,9 @@ func toggleNotificationStatusAction(message []byte, configurationService configu
 			CorrelationId: correlationId,
 		})
 		sendAllNotificationsToClient(notificationService, clientID, correlationId)
+	} else {
+		// Send empty notification list to client
+		sendEmptyNotificationListToClient(clientID, correlationId)
 	}
 	// Send updated configuration to client
 	sendConfigurationsToClient(configurationService, clientID, correlationId)

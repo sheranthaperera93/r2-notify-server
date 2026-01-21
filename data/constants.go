@@ -27,8 +27,8 @@ const (
 	DELETE_NOTIFICATION        = "deleteNotification"
 
 	// Other events
-	RELOAD_NOTIFICATIONS       = "reloadNotifications"
-	TOGGLE_NOTIFICATION_STATUS = "toggleNotificationStatus"
+	RELOAD_NOTIFICATIONS    = "reloadNotifications"
+	SET_NOTIFICATION_STATUS = "setNotificationStatus"
 )
 
 const (
