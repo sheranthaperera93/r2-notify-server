@@ -22,7 +22,7 @@ func InitRedis() {
 	RDB = redis.NewClient(&redis.Options{
 		Addr:      redisHost + ":" + strconv.Itoa(redisPort),
 		Password:  redisPassword,
-		TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+		TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12, ServerName: redisHost},
 	})
 
 	if _, err := RDB.Ping(Ctx).Result(); err != nil {
