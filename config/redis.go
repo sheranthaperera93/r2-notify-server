@@ -22,7 +22,7 @@ func InitRedis() {
 	log.Printf("Redis Configurations: host=%s, port=%d, username=%s, password=***", redisHost, redisPort, redisUsername)
 	RDB = redis.NewClient(&redis.Options{
 		Addr:      redisHost + ":" + strconv.Itoa(redisPort),
-		Username: 	redisUsername
+		Username: 	redisUsername,
 		Password:  redisPassword,
 		TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12},
 	})
