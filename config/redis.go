@@ -24,8 +24,8 @@ func InitRedis() {
 	log.Printf("Redis Configurations: host=%s, port=%d, username=%s, password=***, tlsEnabled=%s", redisHost, redisPort, redisUsername, redisTLSEnabled)
 
 	options := &redis.Options{
-		Addr:         redisHost + ":" + strconv.Itoa(redisPort),
-		Username:     redisUsername,
+		Addr: redisHost + ":" + strconv.Itoa(redisPort),
+		// Username:     redisUsername,
 		Password:     redisPassword,
 		DB:           0,
 		DialTimeout:  10 * time.Second,
