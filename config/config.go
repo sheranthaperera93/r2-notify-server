@@ -17,7 +17,9 @@ type Config struct {
 	mongoSsl                      string
 	RedisHost                     string
 	RedisPort                     int
+	RedisUsername                 string
 	RedisPassword                 string
+	RedisTLSEnabled               string
 	EventHubNameSpaceConString    string
 	EventHubNotificationEventName string
 	AllowedOrigins                string
@@ -41,7 +43,9 @@ func LoadConfig() *Config {
 		mongoSsl:                      GetEnv("MONGO_SSL", "false"),
 		RedisHost:                     GetEnv("REDIS_HOST", "localhost"),
 		RedisPort:                     GetEnvInt("REDIS_PORT", 6379),
+		RedisUsername:                 GetEnv("REDIS_USERNAME", ""),
 		RedisPassword:                 GetEnv("REDIS_PASSWORD", ""),
+		RedisTLSEnabled:               GetEnv("REDIS_TLS_ENABLED", "false"),
 		EventHubNameSpaceConString:    GetEnv("EVENT_HUB_NAMESPACE_CON_STRING", ""),
 		EventHubNotificationEventName: GetEnv("EVENT_HUB_NOTIFICATION_EVENT_NAME", ""),
 		AllowedOrigins:                GetEnv("ALLOWED_ORIGINS", "*"),

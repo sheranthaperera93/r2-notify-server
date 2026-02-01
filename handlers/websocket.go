@@ -159,10 +159,10 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 			return
 		}
 
-		logger.Log.Error(logger.LogPayload{
+		logger.Log.Info(logger.LogPayload{
 			Component:     "WebSocket Websocket Store",
 			Operation:     "WebSocket Store Client",
-			Message:       fmt.Sprintf("Client %s connected", clientID),
+			Message:       fmt.Sprintf("Client %s connected successfully", clientID),
 			UserId:        clientID,
 			CorrelationId: correlationId,
 		})
