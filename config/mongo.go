@@ -16,23 +16,41 @@ func MongoConnection() *mongo.Database {
 	dbName := LoadConfig().MongoDBName
 	username := LoadConfig().MongoUserName
 	password := LoadConfig().MongoPassword
-	mongoRetryWrites := LoadConfig().mongoRetryWrites
-	mongoSsl := LoadConfig().mongoSsl
+	mongoRetryWrites := LoadConfig().MongoRetryWrites
+	mongoSsl := LoadConfig().MongoSsl
+	mongoSchema := LoadConfig().MongoSchema
 
-	log.Printf("Mongo Configurations: host=%s, port=%d, dbName=%s, username=%s, password=***, mongoRetryWrites=%s, mongoSsl=%s", host, port, dbName, username, mongoRetryWrites, mongoSsl)
-	uri := fmt.Sprintf(
-		"mongodb://%s:%s@%s:%d/?ssl=%s&retrywrites=%s",
-		username,
-		password,
-		host,
-		port,
-		mongoSsl,
-		mongoRetryWrites,
-	)
+	log.Printf("Mongo Configurations: host=%s, port=%d, dbName=%s, username=%s, password=***, mongoRetryWrites=%t, mongoSsl=%t", host, port, dbName, username, mongoRetryWrites, mongoSsl)
+	uri := ""
+	isDirect := false
+	if mongoSchema == "mongodb+srv" {
+		isDirect = false
+		uri = fmt.Sprintf(
+			"%s://%s:%s@%s/?ssl=%t&retrywrites=%t",
+			mongoSchema,
+			username,
+			password,
+			host,
+			mongoSsl,
+			mongoRetryWrites,
+		)
+	} else {
+		isDirect = true
+		uri = fmt.Sprintf(
+			"%s://%s:%s@%s:%d/?ssl=%t&retrywrites=%t",
+			mongoSchema,
+			username,
+			password,
+			host,
+			port,
+			mongoSsl,
+			mongoRetryWrites,
+		)
+	}
 
 	log.Printf("Mongo Connection URI: %s", uri)
 
-	clientOptions := options.Client().ApplyURI(uri).SetDirect(true)
+	clientOptions := options.Client().ApplyURI(uri).SetDirect(isDirect)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

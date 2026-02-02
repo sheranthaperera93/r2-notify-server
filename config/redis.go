@@ -21,7 +21,7 @@ func InitRedis() {
 	redisUsername := LoadConfig().RedisUsername
 	redisPassword := LoadConfig().RedisPassword
 	redisTLSEnabled := LoadConfig().RedisTLSEnabled
-	log.Printf("Redis Configurations: host=%s, port=%d, username=%s, password=***, tlsEnabled=%s", redisHost, redisPort, redisUsername, redisTLSEnabled)
+	log.Printf("Redis Configurations: host=%s, port=%d, username=%s, password=***, tlsEnabled=%t", redisHost, redisPort, redisUsername, redisTLSEnabled)
 
 	options := &redis.Options{
 		Addr:         redisHost + ":" + strconv.Itoa(redisPort),
@@ -35,7 +35,7 @@ func InitRedis() {
 		MinIdleConns: 5,
 	}
 
-	if redisTLSEnabled == "true" {
+	if redisTLSEnabled {
 		options.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 		log.Println("TLS enabled for Redis connection")
 	} else {
