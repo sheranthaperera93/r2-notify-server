@@ -36,7 +36,7 @@ func InitRedis() {
 	}
 
 	if redisTLSEnabled {
-		options.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+		options.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12, ServerName: redisHost}
 		log.Println("TLS enabled for Redis connection")
 	} else {
 		log.Println("TLS disabled for Redis connection")

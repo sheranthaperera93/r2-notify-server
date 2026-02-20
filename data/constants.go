@@ -3,7 +3,7 @@ package data
 // Application constants
 const SERVICE_NAME = "r2-notify-server"
 const PRODUCTION_ENV = "production"
-const DEFAULT_ORIGINS = "http://127.0.0.1:4200,http://localhost:4200"
+const DEFAULT_ORIGINS = "*"
 
 // WebSocket event types
 const (

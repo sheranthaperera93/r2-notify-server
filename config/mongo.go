@@ -48,8 +48,6 @@ func MongoConnection() *mongo.Database {
 		)
 	}
 
-	log.Printf("Mongo Connection URI: %s", uri)
-
 	clientOptions := options.Client().ApplyURI(uri).SetDirect(isDirect)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

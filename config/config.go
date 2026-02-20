@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Environment                   string
 	Port                          string
+	JwtSecret                     string
 	MongoSchema                   string
 	MongoHost                     string
 	MongoPort                     int
@@ -30,17 +31,19 @@ type Config struct {
 	LogFilePath                   string
 	MaxLogFileSize                int
 	AppInsightsInstrumentationKey string
+	GoogleClientId                string
 }
 
 func LoadConfig() *Config {
 	return &Config{
 		Environment:                   GetEnv("ENV", "development"),
 		Port:                          GetEnv("PORT", "8081"),
+		JwtSecret:                     GetEnv("JWT_SECRET", "8081"),
 		MongoSchema:                   GetEnv("MONGO_SCHEMA", "mongodb"),
 		MongoHost:                     GetEnv("MONGO_HOST", "localhost"),
 		MongoPort:                     GetEnvInt("MONGO_PORT", 27017),
 		MongoDBName:                   GetEnv("MONGO_DB_NAME", ""),
-		MongoUserName:                 GetEnv("MONGO_USER_NAME", ""),
+		MongoUserName:                 GetEnv("MONGO_USERNAME", ""),
 		MongoPassword:                 GetEnv("MONGO_PASSWORD", ""),
 		MongoRetryWrites:              GetEnvBool("MONGO_RETRY_WRITES", true),
 		MongoSsl:                      GetEnvBool("MONGO_SSL", false),
@@ -58,6 +61,7 @@ func LoadConfig() *Config {
 		LogFilePath:                   GetEnv("LOG_FILE_PATH", "./logs/app.log"),
 		MaxLogFileSize:                GetEnvInt("MAX_LOG_FILE_SIZE", 10485760),
 		AppInsightsInstrumentationKey: GetEnv("APP_INSIGHTS_INSTRUMENTATION_KEY", ""),
+		GoogleClientId:                GetEnv("GOOGLE_CLIENT_ID", ""),
 	}
 }
 

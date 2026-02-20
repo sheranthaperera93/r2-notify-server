@@ -17,6 +17,7 @@ import (
 	configurationRepository "r2-notify-server/repository/configuration"
 	notificationRepository "r2-notify-server/repository/notification"
 	"r2-notify-server/router"
+	authenticationService "r2-notify-server/services/authentication"
 	configurationService "r2-notify-server/services/configuration"
 	notificationService "r2-notify-server/services/notification"
 	"r2-notify-server/utils"
@@ -79,6 +80,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	authenticationService, err := authenticationService.NewAuthenticationServiceImpl()
+
 	// Start Event Hub consumer in a goroutuine to avoid blocking
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,21 +99,24 @@ func main() {
 
 	// Create Notification Controller
 	notificationController := controller.NewNotificationController(notificationService)
+	authenticationController := controller.NewAuthController(authenticationService)
 
 	// Register routes
 	router.RegisterNotificationRoutes(r, notificationController)
+	router.RegisterAuthenticationRoutes(r, authenticationController)
 
 	// Register WebSocket route
 	r.GET("/ws", func(c *gin.Context) {
 		handlers.NewWebSocketHandler(notificationService, configurationService)(c.Writer, c.Request)
 	})
 
-	// Enable CORS for all origins
+	// Enable CORS for all origins and methods needed for REST/WS
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   utils.ProcessAllowedOrigins(config.LoadConfig().AllowedOrigins),
 		AllowedMethods:   []string{"POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "X-User-ID", "X-Correlation-ID", "X-App-ID"},
+		AllowedHeaders:   []string{"Content-Type", "X-App-ID", "X-Correlation-ID", "Authorization"},
 		AllowCredentials: true,
+		Debug:            true,
 	}).Handler(r)
 
 	srv := &http.Server{
