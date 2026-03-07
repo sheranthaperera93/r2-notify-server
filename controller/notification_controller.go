@@ -3,11 +3,14 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"r2-notify-server/config"
 	"r2-notify-server/data"
 	"r2-notify-server/logger"
 	"r2-notify-server/models"
 	clientStore "r2-notify-server/services"
 	notificationService "r2-notify-server/services/notification"
+	"r2-notify-server/utils"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,9 +34,30 @@ func NewNotificationController(service notificationService.NotificationService) 
 // The response will include the newly created notification.
 func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 
-	userId := ctx.GetHeader("X-User-ID")
+	authorization := ctx.GetHeader("Authorization")
 	appId := ctx.GetHeader("X-App-ID")
 	correlationId, _ := ctx.Get(data.CORRELATION_ID)
+
+	bearerPrefix := "Bearer "
+	if !strings.HasPrefix(authorization, bearerPrefix) {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authorization, bearerPrefix)
+	userId, err := utils.ValidateToken(tokenString, []byte(config.LoadConfig().JwtSecret))
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Component:     "NotificationController",
+			Operation:     "CreateNotification",
+			Message:       "Invalid token",
+			AppId:         appId,
+			CorrelationId: correlationId.(string),
+			Error:         err,
+		})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
 
 	logger.Log.Debug(logger.LogPayload{
 		Component:     "NotificationController",

@@ -24,6 +24,16 @@ import (
 func StartEventHubConsumer(ctx context.Context, notificationService notificationService.NotificationService) error {
 
 	cfg := config.LoadConfig()
+
+	if !cfg.EnableEventHub {
+		logger.Log.Info(logger.LogPayload{
+			Message:   "Event Hub consumer is disabled",
+			Component: "Azure EventHub Consumer Consumer",
+			Operation: "StartEventHubConsumer",
+		})
+		return nil
+	}
+
 	connectionString := fmt.Sprintf("%s;EntityPath=%s", cfg.EventHubNameSpaceConString, cfg.EventHubNotificationEventName)
 
 	hub, err := eventhub.NewHubFromConnectionString(connectionString)

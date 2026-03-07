@@ -1,6 +1,8 @@
 package data
 
-import "time"
+import (
+	"time"
+)
 
 type EventHubNotificationPayload struct {
 	AppId    string `validate:"required" json:"appId"`
@@ -58,4 +60,15 @@ type CreateNotificationRequest struct {
 	GroupKey string `validate:"required" json:"groupKey"`
 	Message  string `validate:"required" json:"message"`
 	Status   string `validate:"required" json:"status"`
+}
+
+type GoogleAuthRequest struct {
+	Token string `json:"token"`
+}
+
+type UserInfo struct {
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Avatar string `json:"avatar"`
 }

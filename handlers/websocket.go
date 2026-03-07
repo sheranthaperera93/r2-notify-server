@@ -33,6 +33,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 	allowedOrigins = utils.ProcessAllowedOrigins(origins)
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		upgrader.CheckOrigin = func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			return slices.Contains(allowedOrigins, origin)
@@ -45,18 +46,25 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				Operation: "NewWebSocketHandler",
 				Error:     err,
 			})
+			conn.Close()
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		clientID := r.URL.Query().Get("userId")
-		if clientID == "" {
+		// Extract token from query param
+		tokenString := r.URL.Query().Get("token")
+		// Validate and get user ID
+		var jwtSecret = []byte(config.LoadConfig().JwtSecret)
+		userId, err := utils.ValidateToken(tokenString, jwtSecret)
+		if err != nil {
 			logger.Log.Error(logger.LogPayload{
-				Message:   "Missing user ID",
+				Message:   "Failed to validate JWT token for WebSocket connection.",
 				Component: "WebSocket",
 				Operation: "NewWebSocketHandler",
 				Error:     err,
 			})
 			conn.Close()
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
@@ -66,8 +74,8 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 			logger.Log.Debug(logger.LogPayload{
 				Component: "WebSocket Pong Handler",
 				Operation: "SetPongHandler",
-				Message:   "Pong received from client " + clientID,
-				UserId:    clientID,
+				Message:   "Pong received from client " + userId,
+				UserId:    userId,
 			})
 			conn.SetReadDeadline(time.Now().Add(60 * time.Second)) // reset on pong
 			return nil
@@ -82,18 +90,18 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				logger.Log.Debug(logger.LogPayload{
 					Component: "WebSocket Ping Handler",
 					Operation: "SetPongHandler",
-					Message:   "Ping sent to client " + clientID,
-					UserId:    clientID,
+					Message:   "Ping sent to client " + userId,
+					UserId:    userId,
 				})
 				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 					logger.Log.Error(logger.LogPayload{
 						Component: "WebSocket Pong Handler",
 						Operation: "PingHandler",
-						Message:   "Ping failed for client " + clientID,
-						UserId:    clientID,
+						Message:   "Ping failed for client " + userId,
+						UserId:    userId,
 						Error:     err,
 					})
-					clientStore.RemoveConnection(clientID, conn)
+					clientStore.RemoveConnection(userId, conn)
 					return
 				}
 			}
@@ -107,30 +115,30 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		logger.Log.Info(logger.LogPayload{
 			Component:     "WebSocket Configuration Handler",
 			Operation:     "User Configuration Fetch",
-			Message:       "Fetching configuration for client " + clientID,
-			UserId:        clientID,
+			Message:       "Fetching configuration for client " + userId,
+			UserId:        userId,
 			CorrelationId: correlationId,
 		})
-		configuration, err := configurationService.FindByAppAndUser(clientID)
+		configuration, err := configurationService.FindByAppAndUser(userId)
 		if err != nil {
 			_, err = configurationService.Create(models.Configuration{
-				UserId:              clientID,
+				UserId:              userId,
 				EnableNotifications: isEnableNotification,
 			})
 			logger.Log.Info(logger.LogPayload{
 				Component:     "WebSocket Configuration Handler",
 				Operation:     "User Configuration Create",
-				Message:       "Creating configuration for client " + clientID,
-				UserId:        clientID,
+				Message:       "Creating configuration for client " + userId,
+				UserId:        userId,
 				CorrelationId: correlationId,
 			})
 			if err != nil {
 				logger.Log.Error(logger.LogPayload{
 					Component:     "WebSocket Configuration Handler",
 					Operation:     "User Configuration Create",
-					Message:       "Failed to create configuration for client " + clientID,
+					Message:       "Failed to create configuration for client " + userId,
 					Error:         err,
-					UserId:        clientID,
+					UserId:        userId,
 					CorrelationId: correlationId,
 				})
 				conn.Close()
@@ -141,7 +149,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		}
 
 		info := models.ClientInfo{
-			ID:                 clientID,
+			ID:                 userId,
 			ConnectedAt:        time.Now(),
 			EnableNotification: isEnableNotification,
 		}
@@ -150,8 +158,8 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 			logger.Log.Error(logger.LogPayload{
 				Component:     "WebSocket Redis Store",
 				Operation:     "Redis Store Client",
-				Message:       "Failed to store client in Redis for client " + clientID,
-				UserId:        clientID,
+				Message:       "Failed to store client in Redis for client " + userId,
+				UserId:        userId,
 				Error:         err,
 				CorrelationId: correlationId,
 			})
@@ -162,16 +170,16 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		logger.Log.Info(logger.LogPayload{
 			Component:     "WebSocket Websocket Store",
 			Operation:     "WebSocket Store Client",
-			Message:       fmt.Sprintf("Client %s connected successfully", clientID),
-			UserId:        clientID,
+			Message:       fmt.Sprintf("Client %s connected successfully", userId),
+			UserId:        userId,
 			CorrelationId: correlationId,
 		})
 
 		// Fetch and send all notifications for the client
-		sendAllNotificationsToClient(notificationService, clientID, correlationId, false)
+		sendAllNotificationsToClient(notificationService, userId, correlationId, false)
 
 		// Send Client Configurations
-		sendConfigurationsToClient(configurationService, clientID, correlationId)
+		sendConfigurationsToClient(configurationService, userId, correlationId)
 
 		// Connection close if client disconnect or error occurs
 		go func() {
@@ -182,11 +190,11 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 					logger.Log.Info(logger.LogPayload{
 						Component:     "WebSocket Websocket Store",
 						Operation:     "WebSocket Store Client",
-						Message:       fmt.Sprintf("Client %s disconnected", clientID),
-						UserId:        clientID,
+						Message:       fmt.Sprintf("Client %s disconnected", userId),
+						UserId:        userId,
 						CorrelationId: correlationId,
 					})
-					clientStore.RemoveConnection(clientID, conn)
+					clientStore.RemoveConnection(userId, conn)
 					break
 				}
 
@@ -208,7 +216,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 						Operation:     "ParseEvent",
 						Message:       "Invalid event format",
 						Error:         err,
-						UserId:        clientID,
+						UserId:        userId,
 						CorrelationId: correlationId,
 					})
 					continue
@@ -218,7 +226,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 					Component:     "WebSocket Event Handler",
 					Operation:     "HandleEvent",
 					Message:       "Processing event: " + event.Event,
-					UserId:        clientID,
+					UserId:        userId,
 					CorrelationId: correlationId,
 				})
 
@@ -226,36 +234,36 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 				switch event.Event {
 				// Mark as Read Events
 				case data.MARK_AS_READ:
-					markAsReadAction(notificationService, clientID, correlationId)
+					markAsReadAction(notificationService, userId, correlationId)
 				case data.MARK_APP_AS_READ:
-					markAppReadAction(message, notificationService, clientID, correlationId)
+					markAppReadAction(message, notificationService, userId, correlationId)
 				case data.MARK_GROUP_AS_READ:
-					markGroupAsReadAction(message, notificationService, clientID, correlationId)
+					markGroupAsReadAction(message, notificationService, userId, correlationId)
 				case data.MARK_NOTIFICATION_AS_READ:
-					markNotificationAsReadAction(message, notificationService, clientID, correlationId)
+					markNotificationAsReadAction(message, notificationService, userId, correlationId)
 
 				// Delete Events
 				case data.DELETE_NOTIFICATIONS:
-					deleteNotificationsAction(notificationService, clientID, correlationId)
+					deleteNotificationsAction(notificationService, userId, correlationId)
 				case data.DELETE_APP_NOTIFICATIONS:
-					deleteAppNotificationsAction(message, notificationService, clientID, correlationId)
+					deleteAppNotificationsAction(message, notificationService, userId, correlationId)
 				case data.DELETE_GROUP_NOTIFICATIONS:
-					deleteGroupNotificationAction(message, notificationService, clientID, correlationId)
+					deleteGroupNotificationAction(message, notificationService, userId, correlationId)
 				case data.DELETE_NOTIFICATION:
-					deleteNotificationAction(message, notificationService, clientID, correlationId)
+					deleteNotificationAction(message, notificationService, userId, correlationId)
 
 				// Other Events
 				case data.RELOAD_NOTIFICATIONS:
-					sendAllNotificationsToClient(notificationService, clientID, correlationId, false)
+					sendAllNotificationsToClient(notificationService, userId, correlationId, false)
 				case data.SET_NOTIFICATION_STATUS:
-					setNotificationStatusAction(message, configurationService, notificationService, clientID, correlationId)
+					setNotificationStatusAction(message, configurationService, notificationService, userId, correlationId)
 				default:
 					fmt.Printf("Unknown event -----------------> %+v\n", event)
 					logger.Log.Warn(logger.LogPayload{
 						Component:     "WebSocket Event Handler",
 						Operation:     "HandleEvent",
 						Message:       "Unknown event type: " + event.Event,
-						UserId:        clientID,
+						UserId:        userId,
 						CorrelationId: correlationId,
 					})
 				}
