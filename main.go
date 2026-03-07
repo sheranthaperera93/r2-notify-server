@@ -105,6 +105,14 @@ func main() {
 	router.RegisterNotificationRoutes(r, notificationController)
 	router.RegisterAuthenticationRoutes(r, authenticationController)
 
+	// Health check route
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "ok",
+			"service": "r2-notify-server",
+		})
+	})
+
 	// Register WebSocket route
 	r.GET("/ws", func(c *gin.Context) {
 		handlers.NewWebSocketHandler(notificationService, configurationService)(c.Writer, c.Request)
