@@ -52,10 +52,9 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		}
 
 		// Extract token from query param
-		tokenString := r.URL.Query().Get("token")
+		apiKey := r.URL.Query().Get("token")
 		// Validate and get user ID
-		var jwtSecret = []byte(config.LoadConfig().JwtSecret)
-		userId, err := utils.ValidateToken(tokenString, jwtSecret)
+		userId, err := utils.ValidateAPIKey(apiKey)
 		if err != nil {
 			logger.Log.Error(logger.LogPayload{
 				Message:   "Failed to validate JWT token for WebSocket connection.",

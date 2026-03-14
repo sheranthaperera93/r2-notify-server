@@ -122,7 +122,7 @@ func main() {
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   utils.ProcessAllowedOrigins(config.LoadConfig().AllowedOrigins),
 		AllowedMethods:   []string{"POST", "OPTIONS"},
-		AllowedHeaders:   []string{"Content-Type", "X-App-ID", "X-Correlation-ID", "Authorization"},
+		AllowedHeaders:   []string{"Content-Type", "X-App-ID", "X-Correlation-ID", "X-API-Key"},
 		AllowCredentials: true,
 		Debug:            true,
 	}).Handler(r)

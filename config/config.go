@@ -32,6 +32,7 @@ type Config struct {
 	MaxLogFileSize                int
 	AppInsightsInstrumentationKey string
 	GoogleClientId                string
+	UnkeyRootKey                  string
 }
 
 func LoadConfig() *Config {
@@ -62,6 +63,7 @@ func LoadConfig() *Config {
 		MaxLogFileSize:                GetEnvInt("MAX_LOG_FILE_SIZE", 10485760),
 		AppInsightsInstrumentationKey: GetEnv("APP_INSIGHTS_INSTRUMENTATION_KEY", ""),
 		GoogleClientId:                GetEnv("GOOGLE_CLIENT_ID", ""),
+		UnkeyRootKey:                  GetEnv("UNKEY_ROOT_KEY", ""),
 	}
 }
 

@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"r2-notify-server/config"
 	"r2-notify-server/data"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
+	// "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	unkey "github.com/unkeyed/sdks/api/go/v2"
+	"github.com/unkeyed/sdks/api/go/v2/models/components"
 )
 
 func ProcessAllowedOrigins(origins string) []string {
@@ -24,22 +28,63 @@ func GenerateUUID() string {
 	return uuid.New().String()
 }
 
-func ValidateToken(tokenString string, jwtSecret []byte) (string, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// Verify signing method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return jwtSecret, nil
+func ValidateAPIKey(apiKey string) (string, error) {
+	ctx := context.Background()
+
+	unkeyClient := unkey.New(
+		unkey.WithSecurity(config.LoadConfig().UnkeyRootKey),
+	)
+
+	res, err := unkeyClient.Keys.VerifyKey(ctx, components.V2KeysVerifyKeyRequestBody{
+		Key: apiKey,
 	})
-
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("API Key Request failed: %w", err)
 	}
 
-	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
-		return claims.Subject, nil // Return subject (user ID) from claims
+	body := res.V2KeysVerifyKeyResponseBody
+	if body == nil {
+		return "", fmt.Errorf("Empty response from API key verification")
 	}
 
-	return "", fmt.Errorf("invalid token")
+	if !body.Data.Valid {
+		switch body.Data.Code {
+		case "EXPIRED":
+			return "", fmt.Errorf("API key has expired")
+		case "DISABLED":
+			return "", fmt.Errorf("API key is disabled")
+		case "RATE_LIMITED":
+			return "", fmt.Errorf("Rate limit exceeded")
+		case "USAGE_EXCEEDED":
+			return "", fmt.Errorf("Usage quota exceeded")
+		default:
+			return "", fmt.Errorf("invalid API key: %s", body.Data.Code)
+		}
+	}
+
+	if body.Data.Identity == nil || body.Data.Identity.ExternalID == "" {
+		return "", fmt.Errorf("API key has no identity set")
+	}
+
+	return body.Data.Identity.ExternalID, nil
 }
+
+// func ValidateToken(tokenString string, jwtSecret []byte) (string, error) {
+// 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
+// 		// Verify signing method
+// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, fmt.Errorf("unexpected signing method")
+// 		}
+// 		return jwtSecret, nil
+// 	})
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok && token.Valid {
+// 		return claims.Subject, nil // Return subject (user ID) from claims
+// 	}
+
+// 	return "", fmt.Errorf("invalid token")
+// }
