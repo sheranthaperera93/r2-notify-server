@@ -43,12 +43,12 @@ func (controller *NotificationController) CreateNotification(ctx *gin.Context) {
 		logger.Log.Error(logger.LogPayload{
 			Component:     "NotificationController",
 			Operation:     "CreateNotification",
-			Message:       "Invalid token",
+			Message:       "Invalid API key",
 			AppId:         appId,
 			CorrelationId: correlationId.(string),
 			Error:         err,
 		})
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
 		return
 	}
 

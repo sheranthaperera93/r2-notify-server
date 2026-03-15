@@ -51,13 +51,13 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 			return
 		}
 
-		// Extract token from query param
-		apiKey := r.URL.Query().Get("token")
+		// Extract API key from query param
+		apiKey := r.URL.Query().Get("apiKey")
 		// Validate and get user ID
 		userId, err := utils.ValidateAPIKey(apiKey)
 		if err != nil {
 			logger.Log.Error(logger.LogPayload{
-				Message:   "Failed to validate JWT token for WebSocket connection.",
+				Message:   "Failed to validate API key for WebSocket connection.",
 				Component: "WebSocket",
 				Operation: "NewWebSocketHandler",
 				Error:     err,

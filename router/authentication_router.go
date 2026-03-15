@@ -8,5 +8,5 @@ import (
 
 func RegisterAuthenticationRoutes(r *gin.Engine, authController *controller.AuthenticationController) {
 	notificationRoute := r.Group("/auth")
-	notificationRoute.POST("google", authController.GoogleAuthHandler)
+	notificationRoute.POST("api-key", authController.ApiKeyAuthHandler)
 }
