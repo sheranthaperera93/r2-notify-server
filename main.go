@@ -7,22 +7,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"r2-notify-server/config"
-	"r2-notify-server/controller"
-	"r2-notify-server/data"
-	"r2-notify-server/event-hub/consumer"
-	"r2-notify-server/handlers"
-	"r2-notify-server/logger"
-	"r2-notify-server/middleware"
-	configurationRepository "r2-notify-server/repository/configuration"
-	notificationRepository "r2-notify-server/repository/notification"
-	"r2-notify-server/router"
-	authenticationService "r2-notify-server/services/authentication"
-	configurationService "r2-notify-server/services/configuration"
-	notificationService "r2-notify-server/services/notification"
-	"r2-notify-server/utils"
 	"syscall"
 	"time"
+
+	"github.com/sheranthaperera93/r2-notify-server/internal/config"
+	"github.com/sheranthaperera93/r2-notify-server/internal/controller"
+	"github.com/sheranthaperera93/r2-notify-server/internal/data"
+	"github.com/sheranthaperera93/r2-notify-server/internal/event-hub/consumer"
+	"github.com/sheranthaperera93/r2-notify-server/internal/handlers"
+	"github.com/sheranthaperera93/r2-notify-server/internal/logger"
+	"github.com/sheranthaperera93/r2-notify-server/internal/middleware"
+	configurationRepository "github.com/sheranthaperera93/r2-notify-server/internal/repository/configuration"
+	notificationRepository "github.com/sheranthaperera93/r2-notify-server/internal/repository/notification"
+	"github.com/sheranthaperera93/r2-notify-server/internal/router"
+	authenticationService "github.com/sheranthaperera93/r2-notify-server/internal/services/authentication"
+	configurationService "github.com/sheranthaperera93/r2-notify-server/internal/services/configuration"
+	notificationService "github.com/sheranthaperera93/r2-notify-server/internal/services/notification"
+	"github.com/sheranthaperera93/r2-notify-server/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -109,7 +110,7 @@ func main() {
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
-			"service": "r2-notify-server",
+			"service": "github.com/sheranthaperera93/r2-notify-server",
 		})
 	})
 

@@ -16,7 +16,7 @@ To get started with the R2 Notify Server, follow these steps:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-username/r2-notify-server.git
+git clone https://github.com/sheranthaperera93/r2-notify-server.git
 ```
 
 2. Build the binary
