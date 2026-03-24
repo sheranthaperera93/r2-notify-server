@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"encoding/json"
@@ -11,16 +11,14 @@ import (
 	"github.com/sheranthaperera93/r2-notify-server/internal/data"
 	"github.com/sheranthaperera93/r2-notify-server/internal/logger"
 	"github.com/sheranthaperera93/r2-notify-server/internal/models"
-	clientStore "github.com/sheranthaperera93/r2-notify-server/internal/services"
+	clientService "github.com/sheranthaperera93/r2-notify-server/internal/services/client"
 	configurationService "github.com/sheranthaperera93/r2-notify-server/internal/services/configuration"
+	keyService "github.com/sheranthaperera93/r2-notify-server/internal/services/key"
 	notificationService "github.com/sheranthaperera93/r2-notify-server/internal/services/notification"
 	"github.com/sheranthaperera93/r2-notify-server/internal/utils"
 
 	"github.com/gorilla/websocket"
 )
-
-var upgrader = websocket.Upgrader{}
-var allowedOrigins []string
 
 // NewWebSocketHandler creates a new HTTP handler function for handling WebSocket connections.
 // It upgrades HTTP connections to WebSocket connections, validates request origins, and manages
@@ -28,13 +26,18 @@ var allowedOrigins []string
 // notification configurations for clients, sends notifications and configurations to clients,
 // and listens for incoming WebSocket messages to handle various client events. If a connection
 // error occurs or the client disconnects, the connection is closed and removed from the client store.
-func NewWebSocketHandler(notificationService notificationService.NotificationService, configurationService configurationService.ConfigurationService) http.HandlerFunc {
+func NewWebSocketHandler(notificationService notificationService.NotificationService, configurationService configurationService.ConfigurationService, keyService *keyService.KeyService) http.HandlerFunc {
 
 	origins := config.LoadConfig().AllowedOrigins
-	allowedOrigins = utils.ProcessAllowedOrigins(origins)
+	allowedOrigins := utils.ProcessAllowedOrigins(origins)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		upgrader := websocket.Upgrader{ // also make upgrader local
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				return slices.Contains(allowedOrigins, origin)
+			},
+		}
 		upgrader.CheckOrigin = func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			return slices.Contains(allowedOrigins, origin)
@@ -55,7 +58,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 		// Extract API key from query param
 		apiKey := r.URL.Query().Get("apiKey")
 		// Validate and get user ID
-		userId, err := utils.ValidateAPIKey(apiKey)
+		userId, err := keyService.ValidateAPIKey(apiKey)
 		if err != nil {
 			logger.Log.Error(logger.LogPayload{
 				Message:   "Failed to validate API key for WebSocket connection.",
@@ -101,7 +104,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 						UserId:    userId,
 						Error:     err,
 					})
-					clientStore.RemoveConnection(userId, conn)
+					clientService.RemoveConnection(userId, conn)
 					return
 				}
 			}
@@ -154,7 +157,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 			EnableNotification: isEnableNotification,
 		}
 
-		if err := clientStore.StoreClient(info, conn); err != nil {
+		if err := clientService.StoreClient(info, conn); err != nil {
 			logger.Log.Error(logger.LogPayload{
 				Component:     "WebSocket Redis Store",
 				Operation:     "Redis Store Client",
@@ -194,7 +197,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 						UserId:        userId,
 						CorrelationId: correlationId,
 					})
-					clientStore.RemoveConnection(userId, conn)
+					clientService.RemoveConnection(userId, conn)
 					break
 				}
 
@@ -275,7 +278,7 @@ func NewWebSocketHandler(notificationService notificationService.NotificationSer
 // sendAllNotificationsToClient sends all the notifications of a user to the corresponding client identified by the given clientId.
 // It first fetches all the notifications of the user using the notificationService, then constructs a payload of type NotificationList
 // encapsulating the notifications. If the fetch operation fails, it logs an error and does not send the notifications. If the fetch
-// operation is successful, it sends the constructed payload to the client using the clientStore. If the send operation fails, it logs
+// operation is successful, it sends the constructed payload to the client using the clientService. If the send operation fails, it logs
 // an error.
 // If bypassStatusCheck is true, it will skip the notification status check when sending notifications.
 func sendAllNotificationsToClient(notificationService notificationService.NotificationService, clientId string, correlationId string, bypassStatusCheck bool) {
@@ -299,7 +302,7 @@ func sendAllNotificationsToClient(notificationService notificationService.Notifi
 			Message:       "Sending all notifications to client: " + clientId,
 			CorrelationId: correlationId,
 		})
-		if err := clientStore.SendNotificationListToUser(clientId, payload, bypassStatusCheck); err != nil {
+		if err := clientService.SendNotificationListToUser(clientId, payload, bypassStatusCheck); err != nil {
 			logger.Log.Error(logger.LogPayload{
 				Component:     "WebSocket Notification Handler",
 				Operation:     "SendNotifications",
@@ -314,14 +317,14 @@ func sendAllNotificationsToClient(notificationService notificationService.Notifi
 // sendEmptyNotificationListToClient sends all the notifications of a user to the corresponding client identified by the given clientId.
 // It first fetches all the notifications of the user using the notificationService, then constructs a payload of type NotificationList
 // encapsulating the notifications. If the fetch operation fails, it logs an error and does not send the notifications. If the fetch
-// operation is successful, it sends the constructed payload to the client using the clientStore. If the send operation fails, it logs
+// operation is successful, it sends the constructed payload to the client using the clientService. If the send operation fails, it logs
 // an error.
 func sendEmptyNotificationListToClient(clientId string, correlationId string, bypassNotificationStatus bool) {
 	payload := data.NotificationList{
 		Event: data.Event{Event: data.LIST_NOTIFICATIONS},
 		Data:  []data.Notification{},
 	}
-	if err := clientStore.SendNotificationListToUser(clientId, payload, bypassNotificationStatus); err != nil {
+	if err := clientService.SendNotificationListToUser(clientId, payload, bypassNotificationStatus); err != nil {
 		logger.Log.Error(logger.LogPayload{
 			Component:     "WebSocket Notification Handler",
 			Operation:     "SendNotifications",
@@ -363,7 +366,7 @@ func sendConfigurationsToClient(configurationService configurationService.Config
 			UserId:        clientId,
 			CorrelationId: correlationId,
 		})
-		if err := clientStore.SendConfigurationToUser(payload, true); err != nil {
+		if err := clientService.SendConfigurationToUser(payload, true); err != nil {
 			logger.Log.Error(logger.LogPayload{
 				Component:     "WebSocket Configuration Handler",
 				Operation:     "SendConfigurations",
@@ -704,7 +707,7 @@ func setNotificationStatusAction(message []byte, configurationService configurat
 		UserId:        clientID,
 		CorrelationId: correlationId,
 	})
-	clientStore.UpdateClientInfo(models.ClientInfo{
+	clientService.UpdateClientInfo(models.ClientInfo{
 		ID:                 clientID,
 		EnableNotification: event.Data.EnableNotification,
 	})

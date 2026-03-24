@@ -30,7 +30,7 @@ func NewNotificationRepositoryImpl(Db *mongo.Database) NotificationRepository {
 // FindAll finds all unread notifications for a given user.
 // The notifications are retrieved from the database, and the function returns a slice of Notification
 // objects. If an error occurs during the retrieval process, the function returns an error.
-func (t NotificationRepositoryImpl) FindAll(userId string) (notifications []models.Notification, err error) {
+func (t *NotificationRepositoryImpl) FindAll(userId string) (notifications []models.Notification, err error) {
 	logger.Log.Debug(logger.LogPayload{
 		Component: "Notification Repository",
 		Operation: "FindAll",
@@ -86,7 +86,7 @@ func (t NotificationRepositoryImpl) FindAll(userId string) (notifications []mode
 
 // FindById retrieves a notification document from the database using the specified notificationId and userId.
 // It returns the notification if found, or an error if the notification is not found or if there is an issue with the database query.
-func (t NotificationRepositoryImpl) FindById(notificationId primitive.ObjectID, userId string) (notification models.Notification, err error) {
+func (t *NotificationRepositoryImpl) FindById(notificationId primitive.ObjectID, userId string) (notification models.Notification, err error) {
 	logger.Log.Debug(logger.LogPayload{
 		Component: "Notification Repository",
 		Operation: "FindById",

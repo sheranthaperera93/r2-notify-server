@@ -1,4 +1,4 @@
-package clientStore
+package clientService
 
 import (
 	"encoding/json"

@@ -34,7 +34,7 @@ func NewNotificationServiceImpl(notificationRepository notificationRepository.No
 // notifications are found for the user, an empty list is returned with a nil
 // error. If an error occurs while fetching the notifications, the error is
 // returned.
-func (t NotificationServiceImpl) FindAll(userId string) (notifications []data.Notification, err error) {
+func (t *NotificationServiceImpl) FindAll(userId string) (notifications []data.Notification, err error) {
 	logger.Log.Debug(logger.LogPayload{
 		Component: "Notification Service",
 		Operation: "FindAll",
