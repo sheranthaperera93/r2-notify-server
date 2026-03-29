@@ -3,25 +3,28 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/sheranthaperera93/r2-notify-server/internal/config"
 	"github.com/sheranthaperera93/r2-notify-server/internal/data"
 	"github.com/sheranthaperera93/r2-notify-server/internal/logger"
 	"github.com/sheranthaperera93/r2-notify-server/internal/models"
 	clientService "github.com/sheranthaperera93/r2-notify-server/internal/services/client"
 	keyService "github.com/sheranthaperera93/r2-notify-server/internal/services/key"
 	notificationService "github.com/sheranthaperera93/r2-notify-server/internal/services/notification"
+	"github.com/sheranthaperera93/r2-notify-server/internal/utils"
 )
 
 type NotificationHandler struct {
-	notifSvc notificationService.NotificationService
-	keySvc   *keyService.KeyService
+	notifySvc notificationService.NotificationService
+	keySvc    *keyService.KeyService
 }
 
-func NewNotificationHandler(notifSvc notificationService.NotificationService, keySvc *keyService.KeyService) *NotificationHandler {
-	return &NotificationHandler{notifSvc: notifSvc, keySvc: keySvc}
+func NewNotificationHandler(notifySvc notificationService.NotificationService, keySvc *keyService.KeyService) *NotificationHandler {
+	return &NotificationHandler{notifySvc: notifySvc, keySvc: keySvc}
 }
 
 func (h *NotificationHandler) CreateNotification(c *gin.Context) {
@@ -43,7 +46,7 @@ func (h *NotificationHandler) CreateNotification(c *gin.Context) {
 		return
 	}
 
-	if userId == "" || appId == "" {
+	if appId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "X-App-ID header is required"})
 		return
 	}
@@ -69,7 +72,7 @@ func (h *NotificationHandler) CreateNotification(c *gin.Context) {
 		UpdatedAt:  time.Now(),
 	}
 
-	recordId, err := h.notifSvc.Create(m)
+	recordId, err := h.notifySvc.Create(m)
 	if err != nil {
 		logger.Log.Error(logger.LogPayload{
 			Component:     "NotificationHandler",
@@ -101,4 +104,49 @@ func (h *NotificationHandler) CreateNotification(c *gin.Context) {
 	}, false)
 
 	c.JSON(http.StatusCreated, m)
+}
+
+func (h *NotificationHandler) IssueWebSocketToken(c *gin.Context) {
+	correlationId, _ := c.Get(data.CORRELATION_ID)
+	apiKey := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
+	if apiKey == "" {
+		c.JSON(401, gin.H{"error": "missing api key"})
+		return
+	}
+
+	// Validate via Unkey (your existing ValidateAPIKey)
+	userId, err := h.keySvc.ValidateAPIKey(apiKey)
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Component:     "NotificationHandler",
+			Operation:     "CreateNotification",
+			Message:       "Invalid API key",
+			CorrelationId: correlationId.(string),
+			Error:         err,
+		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+		return
+	}
+
+	token, err := utils.GenerateSecureToken()
+	if err != nil {
+		logger.Log.Error(logger.LogPayload{
+			Component:     "NotificationHandler",
+			Operation:     "Issue WebSocket Token",
+			Message:       "Failed to generate secure token",
+			CorrelationId: correlationId.(string),
+			Error:         err,
+		})
+		c.JSON(500, gin.H{"error": "internal error"})
+		return
+	}
+	key := "wstoken:" + token
+
+	err = config.RDB.Set(c, key, userId, 30*time.Second).Err()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "internal error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"token": token})
 }

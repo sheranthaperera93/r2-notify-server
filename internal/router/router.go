@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/sheranthaperera93/r2-notify-server/internal/handler"
 	"github.com/sheranthaperera93/r2-notify-server/internal/middleware"
 	configurationService "github.com/sheranthaperera93/r2-notify-server/internal/services/configuration"
@@ -21,16 +22,20 @@ func RegisterRoutes(
 	userHandler *handler.UserHandler,
 	keyHandler *handler.KeyHandler,
 	notificationHandler *handler.NotificationHandler,
-	notifSvc notificationService.NotificationService,
+	notifySvc notificationService.NotificationService,
 	configSvc configurationService.ConfigurationService,
 	keySvc *keyService.KeyService,
+	redisClient *redis.Client,
 ) {
 	// Health check
 	r.GET("/health", healthCheck)
 
-	// WebSocket — API key auth happens inside the handler via first-message handshake
-	wsHandler := handler.NewWebSocketHandler(notifSvc, configSvc, keySvc)
-	r.GET("/ws", gin.WrapF(wsHandler))
+	// WS token exchange — client POSTs API key, gets back a short-lived token
+	r.POST("/ws-token", notificationHandler.IssueWebSocketToken)
+
+	// WebSocket — authenticates via short-lived token from /ws-token
+	wsHandler := handler.NewWebSocketHandler(notifySvc, configSvc, redisClient)
+	r.GET("/ws", wsHandler.HandleConnection)
 
 	// Notification publish endpoint — validated by X-API-Key header (Unkey)
 	r.POST("/notification", notificationHandler.CreateNotification)

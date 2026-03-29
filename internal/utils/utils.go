@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,4 +22,12 @@ func ProcessAllowedOrigins(origins string) []string {
 
 func GenerateUUID() string {
 	return uuid.New().String()
+}
+
+func GenerateSecureToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }

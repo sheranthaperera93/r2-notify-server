@@ -1,138 +1,288 @@
-# R2 Notify Server (Realtime Notification Service)
+# r2-notify-server
 
-The R2 Notify Server is a real-time notification service that allows clients to send and receive notifications via WebSockets. It provides a REST API and an Event Hub integration for creating notifications, and supports various notification actions.
+A real-time notification server built with Go and Gin. Your backend pushes notifications to it via a REST API, and connected clients receive them instantly over WebSocket — no polling, no delays.
+
+It handles user authentication, API key management, notification persistence, and WebSocket connection management out of the box.
+
+---
+
+## Features
+
+- ⚡ **Real-time delivery** — notifications are pushed to connected clients instantly via WebSocket
+- 🔐 **Secure WebSocket auth** — short-lived single-use tokens keep API keys out of URLs and server logs
+- 🗝️ **API key management** — create, list, update, and revoke keys via REST, backed by [Unkey](https://unkey.dev)
+- 💾 **Persistent notifications** — stored in MongoDB, delivered on connect so clients never miss anything
+- 🔔 **Notification config** — users can enable/disable notifications and the preference is persisted
+- 🏓 **Connection health** — server pings clients every 30s and cleans up stale connections automatically
+- 📦 **Ready-to-use client packages** — [`r2-notify-client`](https://www.npmjs.com/package/r2-notify-client) and [`r2-notify-react`](https://www.npmjs.com/package/r2-notify-react) handle everything on the frontend
 
 ---
 
 ## Prerequisites
-Before running the R2 Notify Server, make sure you have the following prerequisites installed:
 
-Go 1.16 or later
-MongoDB 4.0 or later
-Azure Event Hubs (optional)
+- Go 1.21+
+- MongoDB 4.0+
+- Redis 6.0+
+- [Unkey](https://unkey.dev) account for API key management
 
-## Getting Started
-To get started with the R2 Notify Server, follow these steps:
+---
 
-1. Clone the repository:
+## Installation & Setup
+
+### 1. Clone the repository
+
 ```bash
 git clone https://github.com/sheranthaperera93/r2-notify-server.git
-```
-
-2. Build the binary
-```bash
 cd r2-notify-server
-go build
 ```
 
-3. Setup the environment variables
+### 2. Configure environment variables
 
-4. Start the server
 ```bash
-./r2-notify-server
+cp .env.example .env
 ```
 
-## Create Notification (REST)
+Open `.env` and fill in the values — see the [Environment Variables](#environment-variables) section below.
 
-Notifications can be created using a REST API endpoint.
+### 3. Run the server
 
-### Endpoint
+```bash
+go run ./cmd/server/main.go
+```
+
+The server starts on the port defined in your `.env` (default `8081`). You should see:
+
+```
+r2-notify started on port 8081
+```
+
+### Docker
+
+```bash
+docker build -t r2-notify-server .
+docker run -p 8081:8081 --env-file .env r2-notify-server
+```
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `PORT` | no | Server port. Default `8081` |
+| `ENV` | yes | `development` or `production` |
+| `MONGO_URI` | yes | MongoDB connection string |
+| `REDIS_URL` | yes | Redis connection string |
+| `UNKEY_ROOT_KEY` | yes | Unkey root key for API key validation |
+| `ALLOWED_ORIGINS` | yes | Comma-separated allowed WebSocket origins e.g. `http://localhost:5173,https://yourapp.com` |
+| `JWT_SECRET` | yes | Secret used to sign authentication tokens |
+| `RESEND_API_KEY` | yes | [Resend](https://resend.com) API key for email delivery |
+| `RESEND_FROM` | yes | From address for outgoing emails e.g. `noreply@yourapp.com` |
+
+---
+
+## How It Works
+
+```
+Your backend  ──POST /notification──►  r2-notify-server  ──WebSocket──►  Browser client
+               (API key in header)       (persists + fans out)             (r2-notify-client)
+```
+
+1. A user logs in and creates an API key via the dashboard or `/api/v1/keys`
+2. The browser client fetches a short-lived WS token by POSTing the API key to `/ws-token`
+3. The client opens a WebSocket using that token — the API key never appears in a URL
+4. Your backend publishes notifications to `/notification` using the same API key
+5. The server persists the notification and immediately pushes it to the connected client
+
+---
+
+## Authentication
+
+### User Authentication
+
+Users register, verify their email, and log in via the `/api/v1/auth` endpoints. Login returns a JWT which is required to access protected endpoints like key management.
+
+### API Keys
+
+API keys are managed via [Unkey](https://unkey.dev). Once a user has a key they can use it to connect over WebSocket and to publish notifications from their backend. Keys can be revoked at any time.
+
+---
+
+## WebSocket Connection
+
+Clients connect in two steps. This keeps the API key out of browser DevTools, server logs, and CDN access logs.
+
+### Step 1 — Acquire a short-lived token
+
+```
+POST /ws-token
+Authorization: Bearer <api-key>
+```
+
+**Response**
+
+```json
+{ "token": "abc123xyz..." }
+```
+
+The token is valid for **30 seconds** and is **single-use** — it is consumed and deleted the moment the WebSocket connection is established. A captured URL cannot be replayed.
+
+### Step 2 — Open the WebSocket
+
+```
+GET /ws?token=<token>
+```
+
+On successful connection the server immediately pushes:
+- The client's full notification list (`listNotifications`)
+- The client's notification config (`listConfigurations`)
+
+> If you're using [`r2-notify-client`](https://www.npmjs.com/package/r2-notify-client) or [`r2-notify-react`](https://www.npmjs.com/package/r2-notify-react), both steps happen automatically — you just provide `serverUrl` and `apiKey`.
+
+---
+
+## Publish a Notification
+
+Send notifications from your own backend. The API key identifies which user receives the notification.
+
+```
 POST /notification
-
-### Headers
-```
-X-User-ID: <USER_ID>
-X-App-ID: <APP_ID>
+X-API-Key: <api-key>
+X-App-ID: <your-app-id>
 Content-Type: application/json
 ```
 
-### Request Body
-```
+**Request body**
+
+```json
 {
   "groupKey": "Pre Allocation",
-  "message": "Allocate suppliers FIFO to orders Finished...",
+  "message": "Allocate suppliers FIFO to orders finished.",
   "status": "success"
 }
 ```
 
-### Example cURL
+| Field | Type | Required | Values |
+|---|---|---|---|
+| `groupKey` | string | yes | Any string — used to group related notifications |
+| `message` | string | yes | The notification text |
+| `status` | string | yes | `success` \| `error` \| `warning` \| `info` |
+
+**Example**
+
+```bash
+curl -X POST http://localhost:8081/notification \
+  -H "X-API-Key: your-api-key" \
+  -H "X-App-ID: supply-chain-app" \
+  -H "Content-Type: application/json" \
+  -d '{"groupKey":"Pre Allocation","message":"Job finished.","status":"success"}'
 ```
-curl --location 'http://localhost:8081/notification' \
---header 'X-User-ID: RICMAN36' \
---header 'X-App-ID: supply-chain-app' \
---header 'Content-Type: application/json' \
---data '{
-  "groupKey": "Pre Allocation",
-  "message": "Allocate suppliers FIFO to orders Finished...",
-  "status": "success"
-}'
+
+The notification is persisted and immediately pushed to all connected WebSocket clients for that user.
+
+---
+
+## WebSocket Events
+
+### Server → Client
+
+| Event | Payload | When |
+|---|---|---|
+| `listNotifications` | `Notification[]` | On connect, and after any create/read/delete action |
+| `newNotification` | `Notification` | When a new notification is published in real time |
+| `listConfigurations` | `NotificationConfig` | On connect, and after config is updated |
+
+### Client → Server
+
+Send a JSON message with an `event` field and optional `data`.
+
+| Event | Data | Description |
+|---|---|---|
+| `markAsRead` | — | Mark all notifications as read |
+| `markAppAsRead` | `{ appId }` | Mark all notifications for an app as read |
+| `markGroupAsRead` | `{ appId, groupKey }` | Mark all notifications in a group as read |
+| `markNotificationAsRead` | `{ id }` | Mark a single notification as read |
+| `deleteNotifications` | — | Delete all notifications |
+| `deleteAppNotifications` | `{ appId }` | Delete all notifications for an app |
+| `deleteGroupNotifications` | `{ appId, groupKey }` | Delete all notifications in a group |
+| `deleteNotification` | `{ id }` | Delete a single notification |
+| `reloadNotifications` | — | Re-fetch and push the full notification list |
+| `setNotificationStatus` | `{ enableNotification: boolean }` | Enable or disable notifications for this user |
+
+**Example message**
+
+```json
+{ "event": "markNotificationAsRead", "data": { "id": "64f3a..." } }
 ```
 
-## Create Notification (Event Hub)
+---
 
-Notifications can also be created by publishing events to the Event Hub.
+## Notification Model
 
-### Event Hub Name
-app-notifications
-
-### Event Payload
-```
+```json
 {
+  "id": "64f3a...",
   "appId": "supply-chain-app",
-  "userId": "RICMAN36",
+  "userId": "user_abc123",
   "groupKey": "Pre Allocation",
-  "message": "Allocate suppliers FIFO to orders Finished...",
-  "status": "success"
+  "message": "Job finished.",
+  "status": "success",
+  "readStatus": false,
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
 }
 ```
 
-| Field    | Type   | Required |
-| -------- | ------ | -------- |
-| appId    | string | Yes      |
-| userId   | string | Yes      |
-| groupKey | string | Yes      |
-| message  | string | Yes      |
-| status   | string | Yes      |
+---
 
-### Notification
+## REST API Reference
 
-The Notification model represents a single notification. It contains the following fields:
+### Health Check
 
-- `_id` : The unique identifier of the notification.
-- `appId`: The ID of the app that sent the notification.
-- `userId`: The ID of the user who received the notification.
-- `groupKey`: The key of the notification group.
-- `message`: The content of the notification.
-- `status`: The status of the notification (e.g., "success", "error", "warning", "info").
-- `readStatus`: Indicates whether the notification has been read.
-- `createdAt`: The timestamp when the notification was created.
-- `updatedAt`: The timestamp when the notification was last updated.
+```
+GET /health
+→ { "status": "ok", "service": "r2-notify" }
+```
 
-### Configuration
+### Auth (public)
 
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/register` | Register a new user |
+| `POST` | `/api/v1/auth/verify-email` | Verify email address |
+| `POST` | `/api/v1/auth/login` | Login — returns access + refresh tokens |
+| `POST` | `/api/v1/auth/refresh` | Refresh access token |
+| `POST` | `/api/v1/auth/logout` | Logout |
+| `POST` | `/api/v1/auth/forgot-password` | Request password reset email |
+| `POST` | `/api/v1/auth/reset-password` | Reset password with token |
 
-## Notification Actions
-The R2 Notify Server supports various notification actions. Here are some of the available actions:
+### API Keys (JWT required)
 
-- markAsRead() - Marks all notifications as read
-- markAppAsRead(appId) - Marks all notifications from a specific app as read
-- markGroupAsRead(appId, groupKey) - Marks all notifications in a group as read
-- markNotificationAsRead(id) - Marks a specific notification as read
-- deleteNotifications() - Deletes all notifications
-- deleteAppNotifications(appId) - Deletes all notifications from a specific app
-- deleteGroupNotifications(appId, groupKey) - Deletes all notifications in a group
-- deleteNotification(id) - Deletes a specific notification
-- reloadNotifications() - Reloads all notifications from the server
-- setNotificationStatus(enable) - Enables or disables notifications
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/keys` | Create a new API key |
+| `GET` | `/api/v1/keys` | List all your API keys |
+| `GET` | `/api/v1/keys/:keyId` | Get details for a specific key |
+| `PATCH` | `/api/v1/keys/:keyId` | Update a key |
+| `DELETE` | `/api/v1/keys/:keyId` | Revoke a key |
 
-Additionally, the following events are fired by the R2 Notify Server:
+### User (JWT required)
 
-- newNotification - Fired when a new notification is received
-- listNotifications - Receives a list of notifications
-- listConfigurations - Receives notification configurations
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/user/me` | Get the authenticated user's profile |
 
-## Notes
+---
 
-- Notifications created via REST or Event Hub are persisted and delivered to connected clients in real time via WebSockets.
+## Client Packages
 
-- createdAt and updatedAt timestamps are managed internally by the service.
+If you're connecting from a browser, use the official client packages — they handle the two-step token flow, reconnection, and event handling automatically.
+
+- **[r2-notify-client](https://www.npmjs.com/package/r2-notify-client)** — framework-agnostic TypeScript client
+- **[r2-notify-react](https://www.npmjs.com/package/r2-notify-react)** — React provider + hooks
+
+---
+
+## License
+
+MIT © Sherantha Perera

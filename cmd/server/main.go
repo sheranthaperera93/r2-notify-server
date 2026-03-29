@@ -53,7 +53,7 @@ func main() {
 	authSvc := authService.NewAuthService(userRepo, tokenRepo, emailSvc)
 	keySvc := keyService.NewKeyService(userRepo)
 
-	notifSvc, err := notificationService.NewNotificationServiceImpl(notifRepo, validate)
+	notifySvc, err := notificationService.NewNotificationServiceImpl(notifRepo, validate)
 	if err != nil {
 		logger.Log.Error(logger.LogPayload{Component: "Main", Operation: "Startup", Message: "Failed to init notification service", Error: err})
 		os.Exit(1)
@@ -69,7 +69,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userRepo)
 	keyHandler := handler.NewKeyHandler(keySvc)
-	notifHandler := handler.NewNotificationHandler(notifSvc, keySvc)
+	notifyHandler := handler.NewNotificationHandler(notifySvc, keySvc)
 
 	// --- Gin ---
 	if cfg.Env == data.PRODUCTION_ENV {
@@ -80,7 +80,7 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(middleware.CorrelationIDMiddleware())
 
-	router.RegisterRoutes(r, authHandler, userHandler, keyHandler, notifHandler, notifSvc, configSvc, keySvc)
+	router.RegisterRoutes(r, authHandler, userHandler, keyHandler, notifyHandler, notifySvc, configSvc, keySvc, config.RDB)
 
 	corsHandler := cors.New(cors.Options{
 		AllowedOrigins:   utils.ProcessAllowedOrigins(cfg.AllowedOrigins),
